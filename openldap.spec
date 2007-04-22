@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.3.34
-%define rel 5
+%define version	2.3.35
+%define rel 1
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://qa.mandriva.com/twiki/bin/view/Main/BackPorting}}
 
@@ -187,7 +187,7 @@ Source67: 	dhcp.schema
 Source68: 	ldapns.schema
 
 # Doc sources, used to build SOURCE12 and SOURCE13 above
-Source100:	openldap-2.3-admin-guide-add-vendor-doc.patch.bz2
+Source100:	openldap-2.3-admin-guide-add-vendor-doc.patch
 Source101:	openldap-2.3-vendor-docs.tar.bz2
 
 # Chris Patches
@@ -232,10 +232,8 @@ Patch54: MigrationTools-40-preserveldif.patch
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
-Patch100: openldap-2.3.34-its4851.patch
-Patch101: openldap-2.3.34-its4853.patch
-Patch102: openldap-2.3.34-its4854.patch
-Patch103: openldap-2.3.34-its4855.patch
+Patch100: openldap-2.3.35-its4924.patch
+Patch101: openldap-2.3.35-its4925.patch
 # Similar patch was submitted and merged into HEAD/2.4
 Patch104: openldap-2.3-dont-write-to-testdir.patch
 # Not in CVS yet
@@ -505,10 +503,8 @@ popd
 %patch53 -p1 -b .ntlm
 
 # patches from CVS
-%patch100 -b .its4851
-%patch101 -b .its4853
-%patch102 -b .its4854
-%patch103 -b .its4855
+%patch100 -b .its4924
+%patch101 -b .its4925
 %patch104 -p1 -b .dont-write-to-testdir
 %patch105 -b .its4873-nocvs
 
