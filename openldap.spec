@@ -32,11 +32,6 @@
 %define _with_migration 1
 %endif
 
-%if %mdkversion < 1010
-%global __libtoolize /bin/true
-%endif
-
-
 %{?_with_system: %global build_system 1}
 %{?_without_system: %global build_system 0}
 %{?_with_modules: %global build_modules 1}
@@ -48,11 +43,12 @@
 %define fname ldap
 %define libname %mklibname %fname %major
 %define migtools_ver 	45
-# db42 with the txn_nolog patch is no longer necessary, just 4.2.52.4 (10.1)
-%if %mdkversion >= 1010
+# we want db42 with 4.2.52.5 and Howard's patch (2008.0)
+%if %mdkversion >= 200800
 %global db4_internal 0
 %else
 %global db4_internal 1
+%global __libtoolize /bin/true
 %endif
 %{?_with_db4internal: %global db4_internal 1}
 %{?_without_db4internal: %global db4_internal 0}
@@ -77,6 +73,8 @@
 %global clientbin	ldapadd,ldapcompare,ldapdelete,ldapmodify,ldapmodrdn,ldappasswd,ldapsearch,ldapwhoami
 %if %db4_internal
 %global serverbin	slapd_db_archive,slapd_db_checkpoint,slapd_db_deadlock,slapd_db_dump,slapd_db_load,slapd_db_printlog,slapd_db_recover,slapd_db_stat,slapd_db_upgrade,slapd_db_verify
+# db4's libtool doesn't like to be replaced
+#define __libtoolize /bin/true
 %else
 %global serverbin	%{nil}
 %endif
@@ -212,11 +210,16 @@ Patch46: 	openldap-2.0.21-schema.patch
 # http://qa.mandriva.com/show_bug.cgi?id=15499
 Patch48:	MigrationTools-45-structural.patch
 
-Patch50: http://www.sleepycat.com/update/4.2.52/patch.4.2.52.1
-Patch51: http://www.sleepycat.com/update/4.2.52/patch.4.2.52.2
-Patch55: http://www.sleepycat.com/update/4.2.52/patch.4.2.52.3
-Patch56: http://www.sleepycat.com/update/4.2.52/patch.4.2.52.4
+# http://www.oracle.com/technology/software/products/berkeley-db/db/
+# http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.html
+Patch50: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.1
+Patch51: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.2
 Patch52: db-4.2.52-amd64-mutexes.patch
+Patch55: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.3
+Patch56: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.4
+Patch57: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.5
+Patch58: http://www.stanford.edu/services/directory/openldap/configuration/patches/db/4252-region-fix.diff
+Patch60: db-4.2.52-libtool-fixes.patch
 %if %db4_internal
 # used by s_config, which is required by above patch:
 BuildRequires:	ed autoconf%{?notmdk: >= 2.5}
@@ -465,9 +468,13 @@ pushd db-%{dbver} >/dev/null
 %patch51
 %patch55
 %patch56
+%patch57
+%patch58 -p1
 
 %ifnarch %ix86
 %patch52 -p1 -b .amd64-mutexes
+%patch60 -p1 -b .libtool-fixes
+
 (cd dist && ./s_config)
 %endif
 popd >/dev/null
@@ -544,7 +551,7 @@ CONFIGURE_TOP="../dist" %configure2_5x \
 
 perl -pi -e 's/^(libdb_base=\s+)\w+/\1libslapd%{ol_suffix}_db/g' Makefile
 #Fix soname and libname in libtool:
-perl -pi -e 's/shared_ext/shrext/g' libtool
+#perl -pi -e 's/shared_ext/shrext/g' libtool
 make
 rm -Rf $dbdir
 mkdir -p $dbdir
