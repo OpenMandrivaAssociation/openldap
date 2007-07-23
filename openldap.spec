@@ -179,7 +179,7 @@ Source64:	calendar.schema
 Source65:	sudo.schema
 # from bind sdb_ldap page:http://www.venaas.no/ldap/bind-sdb/dnszone-schema.txt
 Source66:	dnszone.schema
-# from http://cvs.pld.org.pl/SOURCES/openldap-dhcp.schema
+# from http://www.newwave.net/~masneyb/dhcp-3.0.5-ldap-patch
 Source67: 	dhcp.schema
 # from pam_ldap source
 Source68: 	ldapns.schema
