@@ -1,5 +1,5 @@
 %define pkg_name	openldap
-%define version	2.3.36
+%define version	2.3.37
 %define rel 1
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://qa.mandriva.com/twiki/bin/view/Main/BackPorting}}
