@@ -151,9 +151,9 @@ Source11:	http://www.padl.com/download/MigrationTools-%{migtools_ver}.tar.bz2
 Source3: 	migration-tools.txt
 Source4: 	migrate_automount.pl
 
-%if %db4_internal
+#if %db4_internal
 Source30: http://www.sleepycat.com/update/snapshot/db-%{dbver}.tar.bz2
-%endif
+#endif
 
 # Extended Schema 
 Source50: 	rfc822-MailMember.schema
