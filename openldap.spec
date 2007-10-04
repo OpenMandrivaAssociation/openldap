@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.3.38
-%define rel 3
+%define rel 4
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://qa.mandriva.com/twiki/bin/view/Main/BackPorting}}
 
@@ -16,6 +16,7 @@
 %define build_modules 1
 %define build_modpacks 0
 %define build_slp 0
+%define build_heimdal 0
 %global build_migration 0
 
 %if %{?mdkversion:0}%{?!mdkversion:1}
@@ -38,6 +39,8 @@
 %{?_without_modules: %global build_modules 0}
 %{?_with_slp: %global build_slp 1}
 %{?_without_slp: %global build_slp 0}
+%{?_with_heimdal: %global build_heimdal 1}
+%{?_without_heimdal: %global build_heimdal 0}
 
 %define major 		2.3_0
 %define fname ldap
@@ -192,9 +195,11 @@ Source101:	openldap-2.3-vendor-docs.tar.bz2
 Patch0: 	%{pkg_name}-2.3.4-config.patch
 Patch1:		%{pkg_name}-2.0.7-module.patch
 
+#Fix various paths in smbk5pwd:
+Patch2:		openldap-2.3-smbk5passwd-paths.patch
 # For now, only build support for SMB (no krb5) changing support in smbk5passwd
 # overlay:
-Patch2:		openldap-2.3.4-smbk5passwd-only-smb.patch
+Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
@@ -246,6 +251,9 @@ Patch105: openldap-2.3.34-its4873.patch
 BuildRequires:	openssl-devel, perl
 %if %build_slp
 BuildRequires: openslp-devel
+%endif
+%if %build_heimdal
+BuildRequires: heimdal-devel
 %endif
 #BuildRequires: libgdbm1-devel
 %if %sql
@@ -486,7 +494,10 @@ popd >/dev/null
 perl -pi -e 's/^(#define\s+DEFAULT_SLURPD_REPLICA_DIR.*)ldap(.*)/${1}ldap%{ol_major}${2}/' servers/slurpd/slurp.h
 perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 %patch1 -p1 -b .module
-%patch2 -p1 -b .only-smb
+%patch2 -p1 -b .smbk5paths
+%if !%build_heimdal
+%patch3 -p1 -b .smbonly
+%endif
 
 %patch15 -p1 -b .cldap 
 
@@ -652,7 +663,7 @@ perl -pi -e "s|^AC_CFLAGS.*|AC_CFLAGS = $CFLAGS -fPIC|g" libraries/librewrite/Ma
 make depend 
 
 make 
-make -C contrib/slapd-modules/smbk5pwd
+make libdir=%{_libdir} -C contrib/slapd-modules/smbk5pwd
 pushd contrib/slapd-modules/acl
 gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g \
         -o acl-posixgroup.so posixgroup.c
