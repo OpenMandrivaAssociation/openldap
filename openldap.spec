@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.3.38
-%define rel 4
+%define version	2.3.39
+%define rel 1
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://qa.mandriva.com/twiki/bin/view/Main/BackPorting}}
 
@@ -243,7 +243,6 @@ Patch54: MigrationTools-40-preserveldif.patch
 # Similar patch was submitted and merged into HEAD/2.4
 Patch104: openldap-2.3-dont-write-to-testdir.patch
 # Not in CVS yet
-Patch105: openldap-2.3.34-its4873.patch
 
 
 %{?_with_cyrussasl:BuildRequires: 	%{?!notmdk:libsasl-devel}%{?notmdk:cyrus-sasl-devel}}
@@ -520,7 +519,6 @@ popd
 
 # patches from CVS
 %patch104 -p1 -b .dont-write-to-testdir
-%patch105 -b .its4873-nocvs
 
 # README:
 cp %{SOURCE13} README.mdk
