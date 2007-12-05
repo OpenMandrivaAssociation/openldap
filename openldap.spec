@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.3.39
-%define rel 2
+%define rel 3
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://qa.mandriva.com/twiki/bin/view/Main/BackPorting}}
 
@@ -241,6 +241,7 @@ Patch54: MigrationTools-40-preserveldif.patch
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
 # Similar patch was submitted and merged into HEAD/2.4
+Patch100: openldap-2.3.39-fix-hang-slapadd-noquick.patch
 Patch104: openldap-2.3-dont-write-to-testdir.patch
 # Not in CVS yet
 
@@ -518,6 +519,7 @@ popd
 %patch53 -p1 -b .ntlm
 
 # patches from CVS
+%patch100 -p1 -b .orig
 %patch104 -p1 -b .dont-write-to-testdir
 
 # README:
