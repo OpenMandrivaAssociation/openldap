@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.3.39
-%define rel 4
+%define rel 5
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://qa.mandriva.com/twiki/bin/view/Main/BackPorting}}
 
@@ -139,7 +139,7 @@ Source13:	README-openldap2.3.mdk
 # Specific source
 Source1: 	ldap.init
 Source2: 	%{pkg_name}.sysconfig
-Source3: 	bash-completion
+Source5: 	bash-completion
 Source19:	gencert.sh
 Source20:	ldap.logrotate
 Source21:	slapd.conf
@@ -868,7 +868,7 @@ mv %{buildroot}/var/run/ldap%{ol_major}/openldap-data/DB_CONFIG.example %{buildr
 
 # bash completion
 install -d -m 755 %{buildroot}%{_sysconfdir}/bash_completion.d
-install -m 644 %{SOURCE3} %{buildroot}%{_sysconfdir}/bash_completion.d/openldap-clients
+install -m 644 %{SOURCE5} %{buildroot}%{_sysconfdir}/bash_completion.d/openldap-clients
 
 %clean 
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
