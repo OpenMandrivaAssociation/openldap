@@ -268,7 +268,6 @@ BuildRequires: tcp_wrappers%{?!notmdk:-devel} libtool%{?!notmdk:-devel}
 BuildRequires:  krb5-devel
 # for make test:
 BuildRequires:	diffutils
-BuildRoot: 	%{_tmppath}/%{name}-%{version}-root
 Requires: 	%libname = %{version}-%{release}
 Requires:	shadow-utils, setup >= 2.2.0-6mdk
 #%{mklibname db 4.3}
