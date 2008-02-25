@@ -12,7 +12,7 @@
 %define release %mkrel %rel
 
 #defaults
-%define build_system 1
+%define build_system 0
 %define build_alternatives 0
 %define build_modules 1
 %define build_modpacks 0
