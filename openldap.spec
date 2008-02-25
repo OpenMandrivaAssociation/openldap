@@ -61,7 +61,6 @@
 %{?_without_db4internal: %global db4_internal 0}
 %define dbver 4.6.21
 %define dbname %(a=%dbver;echo ${a%.*})
-
 %define ol_ver_major 2.4
 %if %build_system
 %define ol_major %{nil}
@@ -156,9 +155,7 @@ Source3: 	migration-tools.txt
 Source4: 	migrate_automount.pl
 Source5: 	bash-completion
 
-%if %db4_internal
 Source30: http://www.sleepycat.com/update/snapshot/db-%{dbver}.tar.gz
-%endif
 
 # Extended Schema 
 Source50: 	rfc822-MailMember.schema
