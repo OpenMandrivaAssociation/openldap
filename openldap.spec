@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.7
-%define rel 4
+%define version	2.4.8
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -652,26 +652,20 @@ export ac_cv_header_sys_epoll_h=no
 %endif
 	--enable-wrappers \
 	--enable-bdb=yes \
-	--enable-dnssrv=mod \
 	--enable-hdb=yes \
-	--enable-ldap=mod \
-	--enable-ldbm=yes \
-	--enable-meta=mod \
-	--enable-monitor=mod \
-	--enable-passwd=mod \
+	--enable-backends=mod \
 %if %back_perl
 	--enable-perl=mod \
+%else
+	--enable-perl=no \
 %endif
-	--enable-relay=mod \
 %if %sql
 	--enable-sql=mod \
+%else
+	--enable-sql=no \
 %endif
 	--enable-overlays=mod \
 	--enable-shared
-
-# These options are no longer available
-#	--enable-cldap \
-#	--enable-multimaster \
 
 %if !%build_system
 perl -pi -e 's/^(ldap_subdir\s+=\s+.*)%{pkg_name}/$1%{name}/g' Makefile
