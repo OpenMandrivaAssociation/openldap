@@ -216,15 +216,6 @@ Patch46: 	openldap-2.0.21-schema.patch
 Patch48:	MigrationTools-45-structural.patch
 
 # http://www.oracle.com/technology/software/products/berkeley-db/db/
-# http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.html
-Patch50: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.1
-Patch51: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.2
-Patch52: db-4.2.52-amd64-mutexes.patch
-Patch55: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.3
-Patch56: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.4
-Patch57: http://www.oracle.com/technology/products/berkeley-db/db/update/4.2.52/patch.4.2.52.5
-Patch58: http://www.stanford.edu/services/directory/openldap/configuration/patches/db/4252-region-fix.diff
-Patch60: db-4.2.52-libtool-fixes.patch
 %if %db4_internal
 # used by s_config, which is required by above patch:
 BuildRequires:	ed autoconf%{?notmdk: >= 2.5}
@@ -233,14 +224,13 @@ BuildRequires:	ed autoconf%{?notmdk: >= 2.5}
 BuildRequires: 	db4-devel = %{dbver}
 %endif
 
-Patch53: %pkg_name-2.2.19-ntlm.patch
+Patch53: %pkg_name-ntlm.patch
 # preserves the temp file used to import data if an error occured
 Patch54: MigrationTools-40-preserveldif.patch
 
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
-Patch100:	openldap-2.4-dont-write-outside-testdir.patch
 
 
 %{?_with_cyrussasl:BuildRequires: 	%{?!notmdk:libsasl-devel}%{?notmdk:cyrus-sasl-devel}}
@@ -468,25 +458,6 @@ also be useful as load generators etc.
 %if %db4_internal
 %setup -q -n %{pkg_name}-%{version}%{beta} %{?_with_migration:-a 11} -a 30 
 pushd db-%{dbver} >/dev/null
-##upstream patches
-#.1:
-#%patch50
-#.2:
-#%patch51
-#.3:
-#%patch55
-#.4:
-#%patch56
-#.5:
-#%patch57
-#Howards mem-leak patch integrated upstream
-#%patch58 -p1
-
-#%ifnarch %ix86
-#implemented upstream:
-#%patch52 -p1 -b .amd64-mutexes
-#not necessary
-#%patch60 -p1 -b .libtool-fixes
 
 #(cd dist && ./s_config)
 #%endif
@@ -522,11 +493,9 @@ popd
 %patch46 -p1 -b .mdk
 #bgmilne %patch47 -p1 -b .maildropschema
 # FIXME
-#%patch53 -p1 -b .ntlm
+%patch53 -p1 -b .ntlm
 
 # patches from CVS
-#%patch100 -p1
-#-b .dont-write-to-testdir
 perl -pi -e 's/testrun/\${TESTDIR}/g' tests/scripts/test024-unique
 
 # README:
