@@ -653,6 +653,9 @@ pushd contrib/slapd-modules/passwd
 gcc -shared -fPIC -I../../../include -Wall -g -o pw-netscape.so netscape.c
 gcc -shared -fPIC -I../../../include -I /usr/kerberos/include -Wall -g -DHAVE_KRB5 -o pw-kerberos.so kerberos.c
 popd
+pushd contrib/slapd-modules/allop
+gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g -o allop.so allop.c
+popd
 
 %check
 %if %{!?_without_test:1}%{?_without_test:0}
@@ -687,6 +690,7 @@ export DONT_GPRINTIFY=1
 cp -af contrib/slapd-modules/smbk5pwd/README{,.smbk5passwd}
 cp -af contrib/slapd-modules/passwd/README{,.passwd}
 cp -af contrib/slapd-modules/acl/README{,.acl}
+cp -af contrib/slapd-modules/allop/README{,.allop}
 rm -Rf %{buildroot}
 
 %if %db4_internal
@@ -702,6 +706,8 @@ cp  contrib/slapd-modules/smbk5pwd/.libs/smbk5pwd.so* %{buildroot}/%{_libdir}/%{
 #cp contrib/slapd-modules/acl/acl-posixgroup.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/passwd/pw-netscape.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/passwd/pw-kerberos.so %{buildroot}/%{_libdir}/%{name}
+cp contrib/slapd-modules/allop/allop.so %{buildroot}/%{_libdir}/%{name}
+cp contrib/slapd-modules/allop/slapo-allop.5 %{buildroot}/%{_mandir}/man5
 
 # try and ship the tests such that they will run properly
 
@@ -868,7 +874,8 @@ mv %{buildroot}/var/run/ldap%{ol_major}/openldap-data/DB_CONFIG.example %{buildr
  
 # bash completion
 install -d -m 755 %{buildroot}%{_sysconfdir}/bash_completion.d
-install -m 644 %{SOURCE5} %{buildroot}%{_sysconfdir}/bash_completion.d/openldap-clients
+install -m 644 %{SOURCE5} %{buildroot}%{_sysconfdir}/bash_completion.d/openldap%{ol_major}-clients
+perl -pi -e 's/ ldap(search|add|delete|modify|whoami|compare|passwd) / ldap${1}%{ol_major} /g' %{buildroot}%{_sysconfdir}/bash_completion.d/openldap%{ol_major}-clients
 
 %clean 
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
@@ -1164,15 +1171,16 @@ fi
 %endif
 
 %doc contrib/slapd-modules/smbk5pwd/README.smbk5passwd
-%doc contrib/slapd-modules/passwd/README{,.passwd}
-%doc contrib/slapd-modules/acl/README{,.acl}
+%doc contrib/slapd-modules/passwd/README.passwd
+%doc contrib/slapd-modules/acl/README.acl
+%doc contrib/slapd-modules/allop/README.allop
 
 %files clients
 %defattr(-,root,root)
 %{_bindir}/ldap*
 %{_mandir}/man1/*
 #%{_mandir}/man5/ud.conf.5*
-%{_sysconfdir}/bash_completion.d/openldap-clients
+%{_sysconfdir}/bash_completion.d/openldap%{ol_major}-clients
 
 %files -n %libname
 %defattr(-,root,root)
