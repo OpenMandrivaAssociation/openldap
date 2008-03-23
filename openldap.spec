@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.8
-%define rel 1
+%define rel 2
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -200,6 +200,7 @@ Patch2:		openldap-2.3-smbk5passwd-paths.patch
 # For now, only build support for SMB (no krb5) changing support in smbk5passwd
 # overlay:
 Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
+Patch4:		openldap-2.4.8-addpartial-makefile.patch
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
@@ -325,7 +326,6 @@ Summary: 	Set of scripts for migration of a nis domain to a ldap directory
 Group: 		System/Configuration/Other
 Requires: 	%{name}-servers = %{version}
 Requires: 	%{name}-clients = %{version}
-Requires: 	perl-MIME-Base64
 
 %description migration
 This package contains a set of scripts for migrating data from local files
@@ -474,6 +474,7 @@ perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 %if !%build_heimdal
 %patch3 -p1 -b .smbonly
 %endif
+%patch4 -p1
 
 %patch15 -p1 -b .cldap 
 
@@ -646,6 +647,7 @@ make depend
 make 
 make libdir=%{_libdir} -C contrib/slapd-modules/smbk5pwd
 pushd contrib/slapd-modules/acl
+#broken
 #gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g \
 #        -o acl-posixgroup.so posixgroup.c
 popd
@@ -656,6 +658,12 @@ popd
 pushd contrib/slapd-modules/allop
 gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g -o allop.so allop.c
 popd
+
+
+make -C contrib/slapd-modules/addpartial
+make -C contrib/slapd-modules/autogroup
+# Not shipped yet: comp_match,denyop,dsaschema,lastmod,proxyOld,trace
+
 
 %check
 %if %{!?_without_test:1}%{?_without_test:0}
@@ -687,10 +695,10 @@ make -C tests %{!?tests:bdb}%{?tests:%tests}
 #disable icecream:
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 export DONT_GPRINTIFY=1
-cp -af contrib/slapd-modules/smbk5pwd/README{,.smbk5passwd}
-cp -af contrib/slapd-modules/passwd/README{,.passwd}
-cp -af contrib/slapd-modules/acl/README{,.acl}
-cp -af contrib/slapd-modules/allop/README{,.allop}
+for i in smbk5pwd passwd acl allop addpartial autogroup
+do
+cp -af contrib/slapd-modules/$i/README{,.$i}
+done
 rm -Rf %{buildroot}
 
 %if %db4_internal
@@ -702,12 +710,19 @@ popd
 
 %makeinstall_std
 
-cp  contrib/slapd-modules/smbk5pwd/.libs/smbk5pwd.so* %{buildroot}/%{_libdir}/%{name}
+cp -a contrib/slapd-modules/smbk5pwd/.libs/smbk5pwd.so* %{buildroot}/%{_libdir}/%{name}
+%if !%{build_heimdal}
+for i in %{buildroot}/%{_libdir}/%{name}/smbk5pwd*
+do mv $i ${i/k5/}
+done
+%endif
 #cp contrib/slapd-modules/acl/acl-posixgroup.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/passwd/pw-netscape.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/passwd/pw-kerberos.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/allop/allop.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/allop/slapo-allop.5 %{buildroot}/%{_mandir}/man5
+cp contrib/slapd-modules/addpartial/addpartial.so %{buildroot}/%{_libdir}/%{name}
+cp contrib/slapd-modules/autogroup/autogroup.so %{buildroot}/%{_libdir}/%{name}
 
 # try and ship the tests such that they will run properly
 
@@ -876,6 +891,15 @@ mv %{buildroot}/var/run/ldap%{ol_major}/openldap-data/DB_CONFIG.example %{buildr
 install -d -m 755 %{buildroot}%{_sysconfdir}/bash_completion.d
 install -m 644 %{SOURCE5} %{buildroot}%{_sysconfdir}/bash_completion.d/openldap%{ol_major}-clients
 perl -pi -e 's/ ldap(search|add|delete|modify|whoami|compare|passwd) / ldap${1}%{ol_major} /g' %{buildroot}%{_sysconfdir}/bash_completion.d/openldap%{ol_major}-clients
+
+# install private headers so as to build additional overlays later
+install -d -m 755 %{buildroot}%{_includedir}/%{name}/{include,slapd}
+install -m 644 include/*.h  %{buildroot}%{_includedir}/%{name}/include
+install -d -m 755 %{buildroot}%{_includedir}/%{name}/include/ac
+install -m 644 include/ac/*.h  %{buildroot}%{_includedir}/%{name}/include/ac
+install -m 644 servers/slapd/*.h  %{buildroot}%{_includedir}/%{name}/slapd
+install -d -m 755 %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
+install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
 
 %clean 
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
@@ -1170,10 +1194,12 @@ fi
 %exclude %{_includedir}/db*.h
 %endif
 
-%doc contrib/slapd-modules/smbk5pwd/README.smbk5passwd
+%doc contrib/slapd-modules/smbk5pwd/README.smbk5pwd
 %doc contrib/slapd-modules/passwd/README.passwd
 %doc contrib/slapd-modules/acl/README.acl
 %doc contrib/slapd-modules/allop/README.allop
+%doc contrib/slapd-modules/addpartial/README.addpartial
+%doc contrib/slapd-modules/autogroup/README.autogroup
 
 %files clients
 %defattr(-,root,root)
@@ -1193,6 +1219,7 @@ fi
 %{_libdir}/libl*.la
 %{_includedir}/l*.h
 %{_includedir}/s*.h
+%{_includedir}/openldap
 %{_mandir}/man3/*
 
 %files -n %libname-static-devel
