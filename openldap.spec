@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.8
-%define rel 2
+%define version	2.4.9
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -111,7 +111,6 @@ URL: 		http://www.openldap.org
 # Openldap source
 Source0: 	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{pkg_name}-%{version}%{beta}.tgz
 
-
 ## To generate ths tarball, check the docs out of CVS:
 # cvs -d :pserver:anonymous@cvs.OpenLDAP.org:/repo/OpenLDAP co \
 # -r OPENLDAP_REL_ENG_2_4 guide
@@ -155,7 +154,7 @@ Source3: 	migration-tools.txt
 Source4: 	migrate_automount.pl
 Source5: 	bash-completion
 
-Source30: http://www.sleepycat.com/update/snapshot/db-%{dbver}.tar.gz
+Source30:	http://www.sleepycat.com/update/snapshot/db-%{dbver}.tar.gz
 
 # Extended Schema 
 Source50: 	rfc822-MailMember.schema
@@ -215,6 +214,10 @@ Patch45:	MigrationTools-45-i18n.patch
 Patch46: 	openldap-2.0.21-schema.patch
 # http://qa.mandriva.com/show_bug.cgi?id=15499
 Patch48:	MigrationTools-45-structural.patch
+
+# Upstream bdb patches
+# Patch200:	http://www.oracle.com/technology/products/berkeley-db/xml/update/4.6.21/patch.4.6.21.1
+Patch200:	db46-update-4.6.21.1.diff
 
 # http://www.oracle.com/technology/software/products/berkeley-db/db/
 %if %db4_internal
@@ -458,6 +461,9 @@ also be useful as load generators etc.
 %if %db4_internal
 %setup -q -n %{pkg_name}-%{version}%{beta} %{?_with_migration:-a 11} -a 30 
 pushd db-%{dbver} >/dev/null
+
+# upstream bdb patches
+%patch200 -p0 
 
 #(cd dist && ./s_config)
 #%endif
