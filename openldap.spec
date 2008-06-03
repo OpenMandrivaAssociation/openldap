@@ -766,7 +766,8 @@ install -d %{buildroot}%{_sysconfdir}/sysconfig
 install -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/sysconfig/ldap%{ol_major}
 
 install -m 640 %{SOURCE21} %{SOURCE23} %{SOURCE24} %{buildroot}%{_sysconfdir}/%{name}
-#install -d %{_buildroot}/%{_sysconfdir}/%{name}/slapd.d
+install -d %{buildroot}/%{_sysconfdir}/%{name}/slapd.d
+#install -m640 -o ldap -g ldap -d /etc/openldap/slapd.d
 
 ### repository dir
 install -d %{buildroot}%{_var}/lib/ldap%{ol_major}
@@ -1149,6 +1150,7 @@ fi
 #%dir %{_sysconfdir}/%{name}/slapd.d
 #%attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/ssl/openldap/ldap.pem
 %attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/%{name}/slapd.conf
+%dir %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d
 %attr(640,root,ldap) %{_sysconfdir}/%{name}/DB_CONFIG.example
 %attr(640,root,ldap) %config %{_sysconfdir}/%{name}/slapd.access.conf
 
@@ -1225,7 +1227,7 @@ fi
 %{_libdir}/libl*.la
 %{_includedir}/l*.h
 %{_includedir}/s*.h
-%{_includedir}/openldap
+%{_includedir}/%{name}
 %{_mandir}/man3/*
 
 %files -n %libname-static-devel
