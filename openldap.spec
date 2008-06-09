@@ -587,6 +587,9 @@ export CPPFLAGS="-I%{_prefix}/kerberos/include $CPPFLAGS"
 %if %{?openldap_fd_setsize:1}%{!?openldap_fd_setsize:0}
 CPPFLAGS="$CPPFLAGS -DOPENLDAP_FD_SETSIZE=%{openldap_fd_setsize}"
 %endif
+# FIXME glibc 2.8 breakage, this is not the correct fix, see
+# http://www.openldap.org/its/index.cgi/Build?id=5464;selectid=5464
+CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 export LDFLAGS="-L%{_prefix}/kerberos/%{_lib} $LDFLAGS"
 # building for systems with kernel < 2.6 requires building without epoll support
 %if %{mdkversion} < 1000 || %{?_without_epoll:1}%{!?_without_epoll:0}
@@ -665,7 +668,8 @@ pushd contrib/slapd-modules/allop
 gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g -o allop.so allop.c
 popd
 
-
+# http://wiki.mandriva.com/en/2009-underlinking-overlinking
+LDFLAGS=${LDFLAGS/-Wl,--no-undefined/}
 make -C contrib/slapd-modules/addpartial
 make -C contrib/slapd-modules/autogroup
 # Not shipped yet: comp_match,denyop,dsaschema,lastmod,proxyOld,trace
