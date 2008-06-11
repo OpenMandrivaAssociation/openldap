@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.9
-%define rel 2
+%define version	2.4.10
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -713,17 +713,25 @@ rm -Rf %{buildroot}
 
 %if %db4_internal
 pushd db-%{dbver}/build_unix
-%makeinstall_std
+%makeinstall_std STRIP="/bin/true"
 for i in %{buildroot}/%{_bindir}/db_*;do mv $i ${i/db_/slapd_db_};done
 popd
 %endif
 
-%makeinstall_std
+%makeinstall_std STRIP="" 
 
 cp -a contrib/slapd-modules/smbk5pwd/.libs/smbk5pwd.so* %{buildroot}/%{_libdir}/%{name}
 %if !%{build_heimdal}
 for i in %{buildroot}/%{_libdir}/%{name}/smbk5pwd*
-do mv $i ${i/k5/}
+do 
+  if [ -L ${i} ]
+  then
+    newlink=`readlink $i|sed -e 's/k5//g'`
+    rm $i
+    ln -svf $newlink ${i/k5/}
+  else
+    mv $i ${i/k5/}
+  fi
 done
 %endif
 #cp contrib/slapd-modules/acl/acl-posixgroup.so %{buildroot}/%{_libdir}/%{name}
