@@ -235,6 +235,7 @@ Patch54: MigrationTools-40-preserveldif.patch
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
+Patch100: openldap-2.3-ppolicy-allow-mods-after-exop.patch
 
 
 %{?_with_cyrussasl:BuildRequires: 	%{?!notmdk:libsasl-devel}%{?notmdk:cyrus-sasl-devel}}
@@ -503,6 +504,7 @@ popd
 %patch53 -p1 -b .ntlm
 
 # patches from CVS
+%patch100 -p0
 perl -pi -e 's/testrun/\${TESTDIR}/g' tests/scripts/test024-unique
 
 # README:
