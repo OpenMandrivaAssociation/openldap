@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.10
-%define rel 3
+%define version	2.4.11
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -235,10 +235,6 @@ Patch54: MigrationTools-40-preserveldif.patch
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
-# ITS 5569
-Patch100: openldap-2.3-ppolicy-allow-mods-after-exop.patch
-# ITS 5580:
-Patch101: openldap-2.4-its5580.patch
 
 
 %{?_with_cyrussasl:BuildRequires: 	%{?!notmdk:libsasl-devel}%{?notmdk:cyrus-sasl-devel}}
@@ -507,8 +503,6 @@ popd
 %patch53 -p1 -b .ntlm
 
 # patches from CVS
-%patch100 -p0
-%patch101 -p0 -b .its5580
 perl -pi -e 's/testrun/\${TESTDIR}/g' tests/scripts/test024-unique
 
 # README:
