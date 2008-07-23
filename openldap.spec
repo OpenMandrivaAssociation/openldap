@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.11
-%define rel 1
+%define rel 2
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -200,6 +200,7 @@ Patch2:		openldap-2.3-smbk5passwd-paths.patch
 # overlay:
 Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.8-addpartial-makefile.patch
+Patch5:     openldap-2.4.8-fix-lib-perms.patch
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
@@ -510,6 +511,9 @@ cp %{SOURCE13} README.mdk
 
 # test049 not ready for not writing to testdir ...
 mv tests/scripts/{,broken}test049*
+
+%patch5 -p1
+autoconf
 
 %build
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
