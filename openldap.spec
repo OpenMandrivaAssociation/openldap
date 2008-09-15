@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.11
-%define rel 2
+%define rel 3
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -352,6 +352,7 @@ This package includes the libraries needed by ldap applications.
 Summary: 	OpenLDAP development libraries and header files
 Group: 		Development/C
 Requires: 	%libname = %{version}-%release
+Requires: 	libwrap-devel
 Provides:       %{name}-devel = %{version}-%{release}
 %if %build_system
 Provides: 	lib%fname-devel = %version-%release
