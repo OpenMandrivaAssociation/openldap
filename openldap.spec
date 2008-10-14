@@ -1,5 +1,5 @@
 %define pkg_name	openldap
-%define version	2.4.11
+%define version	2.4.12
 %define rel 3
 %global	beta %{nil}
 
@@ -482,7 +482,7 @@ perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 %if !%build_heimdal
 %patch3 -p1 -b .smbonly
 %endif
-%patch4 -p1
+%patch4 -p1 -b .addpartial
 
 %patch15 -p1 -b .cldap 
 
@@ -634,6 +634,7 @@ export ac_cv_header_sys_epoll_h=no
 	--enable-wrappers \
 	--enable-bdb=yes \
 	--enable-hdb=yes \
+	--enable-ndb=no \
 	--enable-backends=mod \
 %if %back_perl
 	--enable-perl=mod \
