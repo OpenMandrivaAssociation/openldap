@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.12
-%define rel 3
+%define rel 4
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -213,6 +213,7 @@ Patch43: 	MigrationTools-26-suffix.patch
 Patch45:	MigrationTools-45-i18n.patch
 # schema patch
 Patch46: 	openldap-2.0.21-schema.patch
+Patch47: 	openldap-2.4.12-change-dyngroup-schema.patch
 # http://qa.mandriva.com/show_bug.cgi?id=15499
 Patch48:	MigrationTools-45-structural.patch
 
@@ -500,6 +501,7 @@ popd
 %endif
 
 %patch46 -p1 -b .mdk
+%patch47 -p1 -b .dyngroup
 #bgmilne %patch47 -p1 -b .maildropschema
 # FIXME
 %patch53 -p1 -b .ntlm
