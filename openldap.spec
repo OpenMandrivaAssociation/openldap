@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.12
-%define rel 4
+%define rel 5
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -201,6 +201,17 @@ Patch2:		openldap-2.3-smbk5passwd-paths.patch
 Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.8-addpartial-makefile.patch
 Patch5:     openldap-2.4.8-fix-lib-perms.patch
+Patch6:		openldap-2.4.12-test001-check-slapcat.patch
+# ITS #5745 slapcat fails and doesn't return correct error status for bdb fatal error
+Patch7:		openldap-2.4.12-its5745.patch
+# ITS #5709 slapd sync provider skips some objects
+Patch8:		openldap-2.4.12-its5709.patch
+# ITS #5698 slapd crashes after trying to add an invalid database entry
+Patch9:	openldap-2.4.12-its5698.patch
+# ITS #5766 smbkrb5 overlay doesn't honour kerberos principal expiration
+Patch10:	openldap-2.4.12-its5766.patch
+# ITS #5640 fix not completed
+# ITS #5724 not fixed completely yet
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
@@ -220,6 +231,8 @@ Patch48:	MigrationTools-45-structural.patch
 # Upstream bdb patches
 # Patch200:	http://www.oracle.com/technology/products/berkeley-db/xml/update/4.6.21/patch.4.6.21.1
 Patch200:	db46-update-4.6.21.1.diff
+Patch201:	patch.4.6.21.2
+Patch202:	patch.4.6.21.3
 
 # http://www.oracle.com/technology/software/products/berkeley-db/db/
 %if %db4_internal
@@ -467,6 +480,8 @@ pushd db-%{dbver} >/dev/null
 
 # upstream bdb patches
 %patch200 -p0 
+%patch201 -p0 
+%patch202 -p0 
 
 #(cd dist && ./s_config)
 #%endif
@@ -516,6 +531,13 @@ cp %{SOURCE13} README.mdk
 mv tests/scripts/{,broken}test049*
 
 %patch5 -p1
+%patch6 -p1
+%patch7 -p0 -b .its5745
+%patch8 -p0 -b .its5709
+rm tests/scripts/*.its5709
+chmod a+rx tests/scripts/test054*
+%patch9 -p0 -b .its5684
+%patch10 -p0 -b .its5766
 autoconf
 
 %build
