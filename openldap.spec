@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.12
-%define rel 5
+%define version	2.4.13
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -50,8 +50,8 @@
 %define fname ldap
 %define libname %mklibname %fname %major
 %define migtools_ver 	45
-# we want db42 with 4.2.52.5 and Howard's patch (2008.0)
-%if %mdkversion >= 200810
+# we want db47 with 4.7.25.1 and the OpenLDAP patch (2009.1)
+%if %mdkversion >= 200910
 %global db4_internal 0
 %else
 %global db4_internal 1
@@ -59,7 +59,7 @@
 %endif
 %{?_with_db4internal: %global db4_internal 1}
 %{?_without_db4internal: %global db4_internal 0}
-%define dbver 4.6.21
+%define dbver 4.7.25
 %define dbname %(a=%dbver;echo ${a%.*})
 %define ol_ver_major 2.4
 %if %build_system
@@ -202,14 +202,13 @@ Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.8-addpartial-makefile.patch
 Patch5:     openldap-2.4.8-fix-lib-perms.patch
 Patch6:		openldap-2.4.12-test001-check-slapcat.patch
-# ITS #5745 slapcat fails and doesn't return correct error status for bdb fatal error
-Patch7:		openldap-2.4.12-its5745.patch
-# ITS #5709 slapd sync provider skips some objects
-Patch8:		openldap-2.4.12-its5709.patch
-# ITS #5698 slapd crashes after trying to add an invalid database entry
-Patch9:	openldap-2.4.12-its5698.patch
-# ITS #5766 smbkrb5 overlay doesn't honour kerberos principal expiration
-Patch10:	openldap-2.4.12-its5766.patch
+# ITS #5768 Fixed libldap_r deref building
+# (deref overlay still in progress for samba4)
+Patch7:		openldap-2.4.13-its5768.patch
+# ITS #5809 Fixed slapd syncrepl rename handling
+Patch8:		openldap-2.4.13-its5809.patch
+# ITS #5849 Fixed libldap peer cert memory leak
+Patch9: 	openldap-2.4.13-its5849.patch
 # ITS #5640 fix not completed
 # ITS #5724 not fixed completely yet
 
@@ -229,10 +228,8 @@ Patch47: 	openldap-2.4.12-change-dyngroup-schema.patch
 Patch48:	MigrationTools-45-structural.patch
 
 # Upstream bdb patches
-# Patch200:	http://www.oracle.com/technology/products/berkeley-db/xml/update/4.6.21/patch.4.6.21.1
-Patch200:	db46-update-4.6.21.1.diff
-Patch201:	patch.4.6.21.2
-Patch202:	patch.4.6.21.3
+Patch200:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.1
+Patch201:	db.4.7.25.patch
 
 # http://www.oracle.com/technology/software/products/berkeley-db/db/
 %if %db4_internal
@@ -479,9 +476,8 @@ also be useful as load generators etc.
 pushd db-%{dbver} >/dev/null
 
 # upstream bdb patches
-%patch200 -p0 
-%patch201 -p0 
-%patch202 -p0 
+%patch200 -p0
+%patch201 -p1
 
 #(cd dist && ./s_config)
 #%endif
@@ -532,12 +528,10 @@ mv tests/scripts/{,broken}test049*
 
 %patch5 -p1
 %patch6 -p1
-%patch7 -p0 -b .its5745
-%patch8 -p0 -b .its5709
-rm tests/scripts/*.its5709
+%patch7 -p0
+%patch8 -p0
+%patch9 -p0
 chmod a+rx tests/scripts/test054*
-%patch9 -p0 -b .its5684
-%patch10 -p0 -b .its5766
 autoconf
 
 %build
@@ -699,7 +693,7 @@ gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g -o allop.
 popd
 
 # http://wiki.mandriva.com/en/2009-underlinking-overlinking
-LDFLAGS=${LDFLAGS/-Wl,--no-undefined/}
+LDFLAGS=${LDFLAGS//-Wl,--no-undefined/}
 make -C contrib/slapd-modules/addpartial
 make -C contrib/slapd-modules/autogroup
 # Not shipped yet: comp_match,denyop,dsaschema,lastmod,proxyOld,trace
