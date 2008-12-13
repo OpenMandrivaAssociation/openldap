@@ -188,7 +188,7 @@ Source68: 	ldapns.schema
 # Doc sources, used to build SOURCE12 and SOURCE13 above
 Source100:	openldap-2.4-admin-guide-add-vendor-doc.patch
 Source101:	vendor.sdf
-Source100:	vendor-standalone.sdf
+Source102:	vendor-standalone.sdf
 
 # Chris Patches
 Patch0: 	%{pkg_name}-2.3.4-config.patch
