@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.13
-%define rel 1
+%define rel 2
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -51,16 +51,22 @@
 %define libname %mklibname %fname %major
 %define migtools_ver 	45
 # we want db47 with 4.7.25.1 and the OpenLDAP patch (2009.1)
+%define dbver 4.7.25
+%define dbname %(a=%dbver;echo ${a%.*})
+%define bundled_db_source_ver %dbver
 %if %mdkversion >= 200910
 %global db4_internal 0
 %else
 %global db4_internal 1
 %global __libtoolize /bin/true
 %endif
+%if %mdkversion == 200900
+%global db4_internal 0
+%define dbver 4.6.21
+%define bundled_db_source_ver 4.7.25
+%endif
 %{?_with_db4internal: %global db4_internal 1}
 %{?_without_db4internal: %global db4_internal 0}
-%define dbver 4.7.25
-%define dbname %(a=%dbver;echo ${a%.*})
 %define ol_ver_major 2.4
 %if %build_system
 %define ol_major %{nil}
@@ -154,7 +160,7 @@ Source3: 	migration-tools.txt
 Source4: 	migrate_automount.pl
 Source5: 	bash-completion
 
-Source30:	http://www.sleepycat.com/update/snapshot/db-%{dbver}.tar.gz
+Source30:	http://www.sleepycat.com/update/snapshot/db-%{bundled_db_source_ver}.tar.gz
 
 # Extended Schema 
 Source50: 	rfc822-MailMember.schema
@@ -303,7 +309,7 @@ Obsoletes:	%{name}-back_sql < %{version}-%{release}
 %if !%db4_internal
 Requires(pre):	db4-utils
 Requires(post):	db4-utils
-Requires:	db4-utils
+Requires:	db4-utils = %dbver
 %endif
 %if %{?_with_cyrussasl:1}%{!?_with_cyrussasl:0}
 %define saslver %([ -f "%{_includedir}/sasl/sasl.h" ] && echo -e "#include <sasl/sasl.h>\\nSASL_VERSION_MAJOR SASL_VERSION_MINOR SASL_VERSION_STEP"|cpp|awk 'END {printf "%s.%s.%s",$1,$2,$3}' || echo "2.1.22")
@@ -639,6 +645,7 @@ export ac_cv_header_sys_epoll_h=no
 	--enable-cleartext \
 	--enable-crypt \
 	--enable-lmpasswd \
+	%{!?_with_gssapi:--without-gssapi} \
 	%{?_with_kerberos:--enable-kpasswd} \
 	%{?_with_cyrussasl:--enable-spasswd} \
 %if %build_modules
