@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.13
-%define rel 2
+%define rel 3
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -50,23 +50,42 @@
 %define fname ldap
 %define libname %mklibname %fname %major
 %define migtools_ver 	45
-# we want db47 with 4.7.25.1 and the OpenLDAP patch (2009.1)
-%define dbver 4.7.25
-%define dbname %(a=%dbver;echo ${a%.*})
-%define bundled_db_source_ver %dbver
+
+# we want to use the default db version for each release, so as
+# to make backport binary compatibles
+# excepted for very old systems, where we use bundled db
 %if %mdkversion >= 200910
-%global db4_internal 0
-%else
-%global db4_internal 1
-%global __libtoolize /bin/true
+    %global db4_internal 0
+    %define dbver 4.7.25
+    %define bundled_db_source_ver %dbver
 %endif
+
 %if %mdkversion == 200900
-%global db4_internal 0
-%define dbver 4.6.21
-%define bundled_db_source_ver 4.7.25
+    %global db4_internal 0
+    %define dbver 4.6.21
+    %define bundled_db_source_ver 4.7.25
 %endif
+
+%if %mdkversion == 200810
+    %global db4_internal 0
+    %define dbver 4.6.21
+    %define bundled_db_source_ver 4.7.25
+%endif
+
+%if %mdkversion <= 200800
+    %global db4_internal 1
+    %define dbver 4.7.25
+    %define bundled_db_source_ver %dbver
+%endif
+
+%define dbname %(a=%dbver;echo ${a%.*})
 %{?_with_db4internal: %global db4_internal 1}
 %{?_without_db4internal: %global db4_internal 0}
+
+%if %mdkversion < 200910
+    %global __libtoolize /bin/true
+%endif
+
 %define ol_ver_major 2.4
 %if %build_system
 %define ol_major %{nil}
