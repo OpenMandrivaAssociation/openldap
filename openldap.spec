@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.13
-%define rel 4
+%define rel 5
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -177,7 +177,6 @@ Source27:	ldap-common
 Source11:	http://www.padl.com/download/MigrationTools-%{migtools_ver}.tar.bz2
 Source3: 	migration-tools.txt
 Source4: 	migrate_automount.pl
-Source5: 	bash-completion
 
 Source30:	http://www.sleepycat.com/update/snapshot/db-%{bundled_db_source_ver}.tar.gz
 
@@ -956,11 +955,6 @@ perl -pi -e 's/ldap/ldap%{ol_major}/' %{buildroot}/%{_sysconfdir}/logrotate.d/ld
 
 mv %{buildroot}/var/run/ldap%{ol_major}/openldap-data/DB_CONFIG.example %{buildroot}/%{_var}/lib/ldap%{ol_major}/
  
-# bash completion
-install -d -m 755 %{buildroot}%{_sysconfdir}/bash_completion.d
-install -m 644 %{SOURCE5} %{buildroot}%{_sysconfdir}/bash_completion.d/openldap%{ol_major}-clients
-perl -pi -e 's/ ldap(search|add|delete|modify|whoami|compare|passwd) / ldap${1}%{ol_major} /g' %{buildroot}%{_sysconfdir}/bash_completion.d/openldap%{ol_major}-clients
-
 # install private headers so as to build additional overlays later
 install -d -m 755 %{buildroot}%{_includedir}/%{name}/{include,slapd}
 install -m 644 include/*.h  %{buildroot}%{_includedir}/%{name}/include
@@ -1284,7 +1278,6 @@ fi
 %{_bindir}/ldap*
 %{_mandir}/man1/*
 #%{_mandir}/man5/ud.conf.5*
-%{_sysconfdir}/bash_completion.d/openldap%{ol_major}-clients
 
 %files -n %libname
 %defattr(-,root,root)
