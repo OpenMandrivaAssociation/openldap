@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.13
-%define rel 5
+%define version	2.4.14
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -226,13 +226,6 @@ Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.8-addpartial-makefile.patch
 Patch5:     openldap-2.4.8-fix-lib-perms.patch
 Patch6:		openldap-2.4.12-test001-check-slapcat.patch
-# ITS #5768 Fixed libldap_r deref building
-# (deref overlay still in progress for samba4)
-Patch7:		openldap-2.4.13-its5768.patch
-# ITS #5809 Fixed slapd syncrepl rename handling
-Patch8:		openldap-2.4.13-its5809.patch
-# ITS #5849 Fixed libldap peer cert memory leak
-Patch9: 	openldap-2.4.13-its5849.patch
 # ITS #5640 fix not completed
 # ITS #5724 not fixed completely yet
 
@@ -552,9 +545,6 @@ mv tests/scripts/{,broken}test049*
 
 %patch5 -p1
 %patch6 -p1
-%patch7 -p0
-%patch8 -p0
-%patch9 -p0
 chmod a+rx tests/scripts/test054*
 autoconf
 
@@ -712,16 +702,45 @@ popd
 pushd contrib/slapd-modules/passwd
 gcc -shared -fPIC -I../../../include -Wall -g -o pw-netscape.so netscape.c
 gcc -shared -fPIC -I../../../include -I /usr/kerberos/include -Wall -g -DHAVE_KRB5 -o pw-kerberos.so kerberos.c
+# requires radlib.h
+#gcc -shared -fPIC -I../../../include -Wall -g -o pw-radius.so radius.c
+perl -pi -e 's/(CCFLAGS.*)$/$1 -fPIC/' sha2/Makefile
+make -C sha2
 popd
 pushd contrib/slapd-modules/allop
 gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g -o allop.so allop.c
+popd
+pushd contrib/slapd-modules/nssov
+pushd nss-ldapd/
+./configure
+popd
+perl -pi -e 's/^(\$\(OBJS\):)/#$1/g;s/-rpath [^ ]*//g' Makefile
+#rm -f nssov.la
+#make
+popd
+perl -pi -e 's/-rpath [^ ]*//g' contrib/slapd-modules/cloak/Makefile
+LIBTOOL=../../../libtool make -C contrib/slapd-modules/cloak/
+pushd contrib/slapd-modules/dsaschema
+gcc -shared -fPIC -I../../../include -Wall -g -o dsaschema.so dsaschema.c
+popd
+pushd contrib/slapd-modules/lastmod
+gcc -shared -fPIC -I../../../include -Wall -g -o lastmod.so lastmod.c
+popd
+pushd contrib/slapd-modules/nops
+gcc -shared -fPIC -I../../../include -Wall -g -o nops.so nops.c
+popd
+pushd contrib/slapd-modules/trace
+gcc -shared -fPIC -I../../../include -Wall -g -o trace.so trace.c
+popd
+pushd contrib/slapd-modules/denyop
+gcc -shared -fPIC -I../../../include -Wall -g -o denyop.so denyop.c
 popd
 
 # http://wiki.mandriva.com/en/2009-underlinking-overlinking
 LDFLAGS=${LDFLAGS//-Wl,--no-undefined/}
 make -C contrib/slapd-modules/addpartial
 make -C contrib/slapd-modules/autogroup
-# Not shipped yet: comp_match,denyop,dsaschema,lastmod,proxyOld,trace
+# Not shipped yet: comp_match,proxyOld
 
 
 %check
@@ -754,10 +773,11 @@ make -C tests %{!?tests:bdb}%{?tests:%tests}
 #disable icecream:
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 export DONT_GPRINTIFY=1
-for i in smbk5pwd passwd acl allop addpartial autogroup
+for i in smbk5pwd passwd acl allop addpartial autogroup nssov dsaschema
 do
 cp -af contrib/slapd-modules/$i/README{,.$i}
 done
+cp contrib/slapd-modules/passwd/sha2/README{,.sha2}
 rm -Rf %{buildroot}
 
 %if %db4_internal
@@ -786,10 +806,18 @@ done
 #cp contrib/slapd-modules/acl/acl-posixgroup.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/passwd/pw-netscape.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/passwd/pw-kerberos.so %{buildroot}/%{_libdir}/%{name}
+cp contrib/slapd-modules/passwd/sha2/slapd-sha2.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/allop/allop.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/allop/slapo-allop.5 %{buildroot}/%{_mandir}/man5
+#cp -a contrib/slapd-modules/nssov/.libs/nssov.so* %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/addpartial/addpartial.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/autogroup/autogroup.so %{buildroot}/%{_libdir}/%{name}
+#cp -a contrib/slapd-modules/cloak/.libs/cloak.so* %{buildroot}/%{_libdir}/%{name}
+#cp contrib/slapd-modules/cloak/slapo-cloak.5 %{buildroot}/%{_mandir}/man5
+cp contrib/slapd-modules/lastmod/lastmod.so %{buildroot}/%{_libdir}/%{name}
+cp contrib/slapd-modules/lastmod/slapo-lastmod.5 %{buildroot}/%{_mandir}/man5
+cp contrib/slapd-modules/nops/nops.so %{buildroot}/%{_libdir}/%{name}
+cp contrib/slapd-modules/nops/slapo-nops.5 %{buildroot}/%{_mandir}/man5
 
 # try and ship the tests such that they will run properly
 
@@ -1272,6 +1300,9 @@ fi
 %doc contrib/slapd-modules/allop/README.allop
 %doc contrib/slapd-modules/addpartial/README.addpartial
 %doc contrib/slapd-modules/autogroup/README.autogroup
+#%doc contrib/slapd-modules/nssov/README.nssov
+%doc contrib/slapd-modules/dsaschema/README.dsaschema
+%doc contrib/slapd-modules/passwd/sha2/README.sha2
 
 %files clients
 %defattr(-,root,root)
