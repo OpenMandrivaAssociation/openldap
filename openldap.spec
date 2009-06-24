@@ -1002,6 +1002,12 @@ install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{nam
 # allowing slapd to read hosts.allow and hosts.deny
 %{_bindir}/gpasswd -a ldap adm 1>&2 > /dev/null || :
 
+if [ "$1" -ne '1' ]
+then
+SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap%{ol_major} status 2>/dev/null|grep -q stopped;echo $?`
+[ $SLAPD_STATUS -eq 1 ] && service ldap%{ol_major} stop
+service ldap%{ol_major} recover
+
 %if build_system
 LDAPUSER=ldap
 LDAPGROUP=ldap
@@ -1013,8 +1019,6 @@ MIGRATE=`%{_sbindir}/slapd%{ol_major} -VV 2>&1|while read a b c d e;do case $d i
 
 if [ "$1" -ne 1 -a -e "$SLAPDCONF" -a "$MIGRATE" != "nomigrate" ]
 then 
-SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap%{ol_major} status 2>/dev/null|grep -q stopped;echo $?`
-[ $SLAPD_STATUS -eq 1 ] && service ldap%{ol_major} stop
 #`awk '/^[:space:]*directory[:space:]*\w*/ {print $2}' /etc/%{name}/slapd.conf`
 dbs=`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2;suf="";dir=""}; /^[:space:]*suffix[:space:]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[:space:]*directory[:space:]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
@@ -1037,9 +1041,12 @@ do
 		fi
 	fi
 done
-[ $SLAPD_STATUS -eq 1 ] && service ldap%{ol_major} start || :
 fi
 %endif
+# We want post to start the service, but we dont want to start
+# it now to create a new database environment in case of db library upgrade
+touch /var/lock/subsys/slapd%{ol_major}
+fi
 
 %post servers
 %if %mdkversion < 200900
