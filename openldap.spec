@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.16
-%define rel 2
+%define version	2.4.17
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -181,33 +181,33 @@ Source4: 	migrate_automount.pl
 Source30:	http://www.sleepycat.com/update/snapshot/db-%{bundled_db_source_ver}.tar.gz
 
 # Extended Schema 
-Source50: 	rfc822-MailMember.schema
-Source51: 	autofs.schema
-Source52: 	kerberosobject.schema
+#Source50: 	rfc822-MailMember.schema
+#Source51: 	autofs.schema
+#Source52: 	kerberosobject.schema
 # Get from qmail-ldap patch (http://www.nrg4u.com/qmail/)
-Source53: 	qmail.schema
+#Source53: 	qmail.schema
 Source54: 	mull.schema
 # Get from samba source, examples/LDAP/samba.schema
-Source55: 	samba.schema
+#Source55: 	samba.schema
 Source56: 	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/netscape-profile.schema
 Source57: 	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/trust.schema
 Source58: 	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/dns.schema
 Source59: 	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/cron.schema
 Source60:	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/qmailControl.schema
-Source61:	krb5-kdc.schema
-Source62:	kolab.schema
+#Source61:	krb5-kdc.schema
+#Source62:	kolab.schema
 # from evolution package
-Source63:	evolutionperson.schema
+#Source63:	evolutionperson.schema
 # from rfc2739, updated for schema correctness, used by evo for calendar attrs 
-Source64:	calendar.schema
+#Source64:	calendar.schema
 # from README.LDAP in sudo (pre-1.6.8) CVS:
 Source65:	sudo.schema
 # from bind sdb_ldap page:http://www.venaas.no/ldap/bind-sdb/dnszone-schema.txt
-Source66:	dnszone.schema
+#Source66:	dnszone.schema
 # from http://cvs.pld.org.pl/SOURCES/openldap-dhcp.schema
 Source67: 	dhcp.schema
 # from pam_ldap source
-Source68: 	ldapns.schema
+#Source68: 	ldapns.schema
 
 # Doc sources, used to build SOURCE12 and SOURCE13 above
 Source100:	openldap-2.4-admin-guide-add-vendor-doc.patch
@@ -331,6 +331,7 @@ Requires(post):	%{?!notmdk:%sasllib}%{?notmdk:cyrus-sasl} = %saslver
 %endif
 Requires: 	%libname = %{version}-%{release}
 Conflicts:	kolab < 1.9.5-0.20050801.4mdk
+Requires: 	%{pkg_name}%{ol_major}-extra-schemas
 
 %description servers
 OpenLDAP Servers
@@ -693,6 +694,7 @@ perl -pi -e "s|^AC_CFLAGS.*|AC_CFLAGS = $CFLAGS -fPIC|g" libraries/librewrite/Ma
 make depend 
 
 make 
+export LIBTOOL=`pwd`/libtool
 make libdir=%{_libdir} -C contrib/slapd-modules/smbk5pwd
 pushd contrib/slapd-modules/acl
 #broken
@@ -719,7 +721,7 @@ perl -pi -e 's/^(\$\(OBJS\):)/#$1/g;s/-rpath [^ ]*//g' Makefile
 #make
 popd
 perl -pi -e 's/-rpath [^ ]*//g' contrib/slapd-modules/cloak/Makefile
-LIBTOOL=../../../libtool make -C contrib/slapd-modules/cloak/
+make -C contrib/slapd-modules/cloak/
 pushd contrib/slapd-modules/dsaschema
 gcc -shared -fPIC -I../../../include -Wall -g -o dsaschema.so dsaschema.c
 popd
@@ -811,7 +813,7 @@ cp contrib/slapd-modules/allop/allop.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/allop/slapo-allop.5 %{buildroot}/%{_mandir}/man5
 #cp -a contrib/slapd-modules/nssov/.libs/nssov.so* %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/addpartial/addpartial.so %{buildroot}/%{_libdir}/%{name}
-cp contrib/slapd-modules/autogroup/autogroup.so %{buildroot}/%{_libdir}/%{name}
+cp contrib/slapd-modules/autogroup/.libs/autogroup.so* %{buildroot}/%{_libdir}/%{name}
 #cp -a contrib/slapd-modules/cloak/.libs/cloak.so* %{buildroot}/%{_libdir}/%{name}
 #cp contrib/slapd-modules/cloak/slapo-cloak.5 %{buildroot}/%{_mandir}/man5
 cp contrib/slapd-modules/lastmod/lastmod.so %{buildroot}/%{_libdir}/%{name}
@@ -880,10 +882,10 @@ install -d %{buildroot}%{_datadir}/%{name}/schema
 mv -f %{buildroot}%{_sysconfdir}/%{name}/schema/* %{buildroot}%{_datadir}/%{name}/schema/
 
 ### install additional schemas
-for i in %{SOURCE50} %{SOURCE51} %{SOURCE52} %{SOURCE53} %{SOURCE54} \
-	%{SOURCE55} %{SOURCE56} %{SOURCE57} %{SOURCE58} %{SOURCE59} \
-	%{SOURCE60} %{SOURCE61} %{SOURCE62} %{SOURCE63} %{SOURCE64} \
-	%{SOURCE65} %{SOURCE66} %{SOURCE67} %{SOURCE68}; do
+for i in %{SOURCE54} \
+	%{SOURCE56} %{SOURCE57} %{SOURCE58} %{SOURCE59} \
+	%{SOURCE60} \
+	%{SOURCE65} %{SOURCE67}; do
 install -m 644 $i %{buildroot}%{_datadir}/%{name}/schema/
 done
 
