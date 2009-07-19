@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.17
-%define rel 1
+%define rel 2
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -181,33 +181,7 @@ Source4: 	migrate_automount.pl
 Source30:	http://www.sleepycat.com/update/snapshot/db-%{bundled_db_source_ver}.tar.gz
 
 # Extended Schema 
-#Source50: 	rfc822-MailMember.schema
-#Source51: 	autofs.schema
-#Source52: 	kerberosobject.schema
-# Get from qmail-ldap patch (http://www.nrg4u.com/qmail/)
-#Source53: 	qmail.schema
 Source54: 	mull.schema
-# Get from samba source, examples/LDAP/samba.schema
-#Source55: 	samba.schema
-Source56: 	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/netscape-profile.schema
-Source57: 	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/trust.schema
-Source58: 	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/dns.schema
-Source59: 	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/cron.schema
-Source60:	http://debian.jones.dk/debian/local/honda/pool-ldapv3/woody-jones/openldap2/schemas/qmailControl.schema
-#Source61:	krb5-kdc.schema
-#Source62:	kolab.schema
-# from evolution package
-#Source63:	evolutionperson.schema
-# from rfc2739, updated for schema correctness, used by evo for calendar attrs 
-#Source64:	calendar.schema
-# from README.LDAP in sudo (pre-1.6.8) CVS:
-Source65:	sudo.schema
-# from bind sdb_ldap page:http://www.venaas.no/ldap/bind-sdb/dnszone-schema.txt
-#Source66:	dnszone.schema
-# from http://cvs.pld.org.pl/SOURCES/openldap-dhcp.schema
-Source67: 	dhcp.schema
-# from pam_ldap source
-#Source68: 	ldapns.schema
 
 # Doc sources, used to build SOURCE12 and SOURCE13 above
 Source100:	openldap-2.4-admin-guide-add-vendor-doc.patch
@@ -882,12 +856,7 @@ install -d %{buildroot}%{_datadir}/%{name}/schema
 mv -f %{buildroot}%{_sysconfdir}/%{name}/schema/* %{buildroot}%{_datadir}/%{name}/schema/
 
 ### install additional schemas
-for i in %{SOURCE54} \
-	%{SOURCE56} %{SOURCE57} %{SOURCE58} %{SOURCE59} \
-	%{SOURCE60} \
-	%{SOURCE65} %{SOURCE67}; do
-install -m 644 $i %{buildroot}%{_datadir}/%{name}/schema/
-done
+install -m 644 %{SOURCE54} %{buildroot}%{_datadir}/%{name}/schema/
 
 install -d %{buildroot}/%{_datadir}/%{name}/scripts
 install -m 755 %{SOURCE25} %{SOURCE26} %{SOURCE27} %{buildroot}/%{_datadir}/%{name}/scripts/
