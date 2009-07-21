@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.17
-%define rel 2
+%define rel 3
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -220,7 +220,9 @@ Patch48:	MigrationTools-45-structural.patch
 
 # Upstream bdb patches
 Patch200:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.1
-Patch201:	db.4.7.25.patch
+Patch201:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.2
+Patch202:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.3
+Patch203:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.4
 
 # http://www.oracle.com/technology/software/products/berkeley-db/db/
 %if %db4_internal
@@ -469,7 +471,9 @@ pushd db-%{dbver} >/dev/null
 
 # upstream bdb patches
 %patch200 -p0
-%patch201 -p1
+%patch201 -p0
+%patch202 -p0
+%patch203 -p1
 
 #(cd dist && ./s_config)
 #%endif
