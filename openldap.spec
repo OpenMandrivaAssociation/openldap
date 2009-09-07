@@ -307,7 +307,7 @@ Requires(post):	%{?!notmdk:%sasllib}%{?notmdk:cyrus-sasl} = %saslver
 %endif
 Requires: 	%libname = %{version}-%{release}
 Conflicts:	kolab < 1.9.5-0.20050801.4mdk
-Requires: 	%{pkg_name}%{ol_major}-extra-schemas
+Requires: 	%{pkg_name}%{ol_major}-extra-schemas >= 1.3-7
 
 %description servers
 OpenLDAP Servers
@@ -746,7 +746,7 @@ export LD_LIBRARY_PATH="${dbdir}/%{_libdir}"
 %endif
 # meta test seems to timeout on the Mandriva cluster:
 #export TEST_META=no
-make -C tests %{!?tests:bdb}%{?tests:%tests}
+make -C tests %{!?tests:test}%{?tests:%tests}
 %endif
 
 %install
