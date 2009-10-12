@@ -746,6 +746,8 @@ export LD_LIBRARY_PATH="${dbdir}/%{_libdir}"
 %endif
 # meta test seems to timeout on the Mandriva cluster:
 #export TEST_META=no
+# Use a pseudo-random number between 9000 and 10000 as base port for slapd in tests
+export SLAPD_BASEPORT=$[9000+RANDOM%1000]
 make -C tests %{!?tests:test}%{?tests:%tests}
 %endif
 
