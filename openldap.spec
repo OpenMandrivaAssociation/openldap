@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.19
-%define rel 2
+%define rel 3
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -1108,6 +1108,8 @@ then
 		# reset syslog daemon
 		if [ -f /var/lock/subsys/syslog ]; then
         		service syslog restart  > /dev/null 2>/dev/null || : 
+		elif [ -f /var/lock/subsys/rsyslog ]; then
+			service rsyslog restart > /dev/null 2>/dev/null || :
 		fi
 	else
 		echo "I can't set syslog local-user!"
@@ -1165,6 +1167,8 @@ if [ $1 = 0 ]; then
 	# reset syslog daemon
 	if [ -f /var/lock/subsys/syslog ]; then
 	        service syslog restart  > /dev/null 2>/dev/null || : 
+	elif [ -f /var/lock/subsys/rsyslog ]; then
+		service rsyslog restart > /dev/null 2>/dev/null || :
 	fi
 fi
 %_postun_userdel ldap
