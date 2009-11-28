@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.19
-%define rel 3
+%define rel 4
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -54,33 +54,38 @@
 # we want to use the default db version for each release, so as
 # to make backport binary compatibles
 # excepted for very old systems, where we use bundled db
+%define bundled_db_source_ver 4.8.24
+%if %mdkversion >= 201010
+    %global db4_internal 0
+    %define dbver 4.8.24
+%endif
+
 %if %mdkversion >= 200910
     %global db4_internal 0
     %define dbver 4.7.25
-    %define bundled_db_source_ver %dbver
 %endif
 
 %if %mdkversion == 200900
     %global db4_internal 0
     %define dbver 4.6.21
-    %define bundled_db_source_ver 4.7.25
 %endif
 
 %if %mdkversion == 200810
     %global db4_internal 0
     %define dbver 4.6.21
-    %define bundled_db_source_ver 4.7.25
 %endif
 
 %if %mdkversion <= 200800
     %global db4_internal 1
     %define dbver 4.7.25
-    %define bundled_db_source_ver %dbver
 %endif
 
 %define dbname %(a=%dbver;echo ${a%.*})
 %{?_with_db4internal: %global db4_internal 1}
 %{?_without_db4internal: %global db4_internal 0}
+%if %db4_internal
+%define dbver %bundled_db_source_ver
+%endif
 
 %if %mdkversion < 200910
     %global __libtoolize /bin/true
@@ -218,11 +223,8 @@ Patch47: 	openldap-2.4.12-change-dyngroup-schema.patch
 # http://qa.mandriva.com/show_bug.cgi?id=15499
 Patch48:	MigrationTools-45-structural.patch
 
+Patch200:	db-4.7.25-fix-format-errors.patch
 # Upstream bdb patches
-Patch200:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.1
-Patch201:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.2
-Patch202:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.3
-Patch203:	http://www.oracle.com/technology/products/berkeley-db/db/update/4.7.25/patch.4.7.25.4
 
 # http://www.oracle.com/technology/software/products/berkeley-db/db/
 %if %db4_internal
@@ -469,11 +471,8 @@ also be useful as load generators etc.
 %setup -q -n %{pkg_name}-%{version}%{beta} %{?_with_migration:-a 11} -a 30 
 pushd db-%{dbver} >/dev/null
 
+%patch200 -p1
 # upstream bdb patches
-%patch200 -p0
-%patch201 -p0
-%patch202 -p0
-%patch203 -p1
 
 #(cd dist && ./s_config)
 #%endif
@@ -904,7 +903,7 @@ install -m 644 %{SOURCE20} %{buildroot}%{_sysconfdir}/logrotate.d/ldap%{ol_major
 # get the buildroot out of the man pages
 perl -pi -e "s|%{buildroot}||g" %{buildroot}%{_mandir}/*/*.*
 
-mkdir -p %{buildroot}%{_sysconfdir}/ssl/%{name}
+#mkdir -p %{buildroot}%{_sysconfdir}/ssl/%{name}
 
 #rename binaries
 %if !%{build_system} || %build_alternatives
@@ -1087,6 +1086,10 @@ fi
 [ $SLAPD_STATUS -eq 1 ] && service ldap%{ol_major} start
 
 # Setup log facility for OpenLDAP on new install
+%if %{?_post_syslogadd:1}%{!?_post_syslogadd:0}
+log=`%_post_syslogadd /var/log/ldap%{ol_major}/ldap.log`
+perl -pi -e "s|^.*SLAPDSYSLOGLOCALUSER.*|SLAPDSYSLOGLOCALUSER=\"${log/a-z/A-Z/}\"|g" %{_sysconfdir}/sysconfig/ldap%{ol_major}
+%else
 if [ -f %{_sysconfdir}/syslog.conf -a $1 -eq 1 ]
 then
 	# clean syslog
@@ -1119,12 +1122,23 @@ then
 	perl -pi -e "s|^.*SLAPDSYSLOGLOCALUSER.*|SLAPDSYSLOGLOCALUSER=\"LOCAL${cntlog}\"|g" %{_sysconfdir}/sysconfig/ldap%{ol_major}
 
 fi
+%endif
 
+# Handle switch from %{_sysconfdir}/ssl/%{name}/ldap.pem to %{_sysconfdir}/pki/tls/private/ldap.pem
+if [ -e %{_sysconfdir}/ssl/%{name}/ldap.pem -a ! -e %{_sysconfdir}/pki/tls/private/ldap.pem ]
+then
+  mv %{_sysconfdir}/ssl/%{name}/ldap.pem %{_sysconfdir}/pki/tls/private/ldap.pem
+  ln -s %{_sysconfdir}/pki/tls/private/ldap.pem %{_sysconfdir}/ssl/%{name}/ldap.pem
+fi
 # generate the ldap.pem cert here instead of the initscript
-if [ ! -e %{_sysconfdir}/ssl/%{name}/ldap.pem ] ; then
+%if %{?_create_ssl_certificate:1}%{!?_create_ssl_certificate:0}
+%_create_ssl_certificate -g ldap ldap
+%else
+if [ ! -e %{_sysconfdir}/pki/tls/private/ldap.pem ]
+then
   if [ -x %{_datadir}/%{name}/gencert.sh ] ; then
     echo "Generating self-signed certificate..."
-    pushd %{_sysconfdir}/ssl/%{name}/ > /dev/null
+    pushd %{_sysconfdir}/pki/tls/private > /dev/null
     yes ""|%{_datadir}/%{name}/gencert.sh >/dev/null 2>&1
     chmod 640 ldap.pem
     chown root:ldap ldap.pem
@@ -1133,6 +1147,7 @@ if [ ! -e %{_sysconfdir}/ssl/%{name}/ldap.pem ] ; then
   echo "To generate a self-signed certificate, you can use the utility"
   echo "%{_datadir}/%{name}/gencert.sh..."
 fi
+%endif
 
 pushd %{_sysconfdir}/%{name}/ > /dev/null
 for i in slapd.conf slapd.access.conf ; do
@@ -1160,6 +1175,9 @@ fi
 %if %mdkversion < 200900
 /sbin/ldconfig
 %endif
+%if %{?_preun_syslogdel:1}%{?!_preun_syslogdel:0}
+%_preun_syslogdel
+%else
 if [ $1 = 0 ]; then 
 	# remove ldap entry 
 	perl -pi -e "s|^.*ldap.*\n||g" %{_sysconfdir}/syslog.conf 
@@ -1171,6 +1189,7 @@ if [ $1 = 0 ]; then
 		service rsyslog restart > /dev/null 2>/dev/null || :
 	fi
 fi
+%endif
 %_postun_userdel ldap
 
 
@@ -1234,7 +1253,7 @@ fi
 %attr(640,root,ldap) %{_sysconfdir}/%{name}/DB_CONFIG.example
 %attr(640,root,ldap) %config %{_sysconfdir}/%{name}/slapd.access.conf
 
-%dir %{_sysconfdir}/ssl/%{name}
+#dir %{_sysconfdir}/ssl/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/schema/*.schema
 %dir %{_datadir}/%{name}
 %dir %{_datadir}/%{name}/schema
