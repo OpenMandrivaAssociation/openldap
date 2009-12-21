@@ -60,7 +60,7 @@
     %define dbver 4.8.24
 %endif
 
-%if %mdkversion >= 200910
+%if %mdkversion <= 201000
     %global db4_internal 0
     %define dbver 4.7.25
 %endif
