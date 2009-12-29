@@ -1,5 +1,5 @@
 %define pkg_name	openldap
-%define version	2.4.20
+%define version	2.4.21
 %define rel 1
 %global	beta %{nil}
 
@@ -19,6 +19,7 @@
 %define build_slp 0
 %define build_heimdal 0
 %define build_asmmutex 0
+%define build_nssov 0
 %global build_migration 0
 
 %if %{?mdkversion:0}%{?!mdkversion:1}
@@ -77,7 +78,6 @@
 
 %if %mdkversion <= 200800
     %global db4_internal 1
-    %define dbver 4.7.25
 %endif
 
 %define dbname %(a=%dbver;echo ${a%.*})
@@ -359,7 +359,7 @@ This package includes the libraries needed by ldap applications.
 Summary: 	OpenLDAP development libraries and header files
 Group: 		Development/C
 Requires: 	%libname = %{version}-%release
-Requires: 	libwrap-devel
+Requires: 	tcp_wrappers%{?!notmdk:-devel}
 Provides:       %{name}-devel = %{version}-%{release}
 %if %build_system
 Provides: 	lib%fname-devel = %version-%release
@@ -524,6 +524,7 @@ mv tests/scripts/{,broken}test049*
 %patch5 -p1
 %patch6 -p1
 chmod a+rx tests/scripts/test054*
+aclocal
 autoconf
 
 %build
@@ -689,6 +690,8 @@ popd
 pushd contrib/slapd-modules/allop
 gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g -o allop.so allop.c
 popd
+
+%if %build_nssov
 pushd contrib/slapd-modules/nssov
 pushd nss-ldapd/
 ./configure
@@ -697,6 +700,8 @@ perl -pi -e 's/^(\$\(OBJS\):)/#$1/g;s/-rpath [^ ]*//g' Makefile
 #rm -f nssov.la
 #make
 popd
+%endif
+
 perl -pi -e 's/-rpath [^ ]*//g' contrib/slapd-modules/cloak/Makefile
 make -C contrib/slapd-modules/cloak/
 pushd contrib/slapd-modules/dsaschema
