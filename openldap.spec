@@ -524,7 +524,7 @@ mv tests/scripts/{,broken}test049*
 %patch5 -p1
 %patch6 -p1
 chmod a+rx tests/scripts/test054*
-aclocal
+#aclocal
 autoconf
 
 %build
