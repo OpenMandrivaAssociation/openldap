@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.21
-%define rel 1
+%define rel 2
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -55,10 +55,10 @@
 # we want to use the default db version for each release, so as
 # to make backport binary compatibles
 # excepted for very old systems, where we use bundled db
-%define bundled_db_source_ver 4.8.24
+%define bundled_db_source_ver 4.8.26
 %if %mdkversion >= 201010
     %global db4_internal 0
-    %define dbver 4.8.24
+    %define dbver 4.8.26
 %endif
 
 %if %mdkversion <= 201000
