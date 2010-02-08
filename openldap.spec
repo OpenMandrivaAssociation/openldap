@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.21
-%define rel 2
+%define rel 3
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -284,7 +284,10 @@ Install openldap if you need LDAP applications and tools.
 %package servers
 Summary: 	OpenLDAP servers and related files
 Group: 		System/Servers
-Requires(pre):	%{?!notmdk:rpm-helper}%{?notmdk:/usr/sbin/useradd} coreutils
+%if %mdkversion
+BuildRequires:	rpm-helper >= 0.23
+%endif
+Requires(pre):	%{?!notmdk:rpm-helper >= 0.23}%{?notmdk:/usr/sbin/useradd} coreutils
 %if !%build_modpacks
 Provides:	%{name}-back_dnssrv = %{version}-%{release}
 Provides:	%{name}-back_ldap = %{version}-%{release}
@@ -1092,8 +1095,9 @@ fi
 
 # Setup log facility for OpenLDAP on new install
 %if %{?_post_syslogadd:1}%{!?_post_syslogadd:0}
-log=`%_post_syslogadd /var/log/ldap%{ol_major}/ldap.log`
-perl -pi -e "s|^.*SLAPDSYSLOGLOCALUSER.*|SLAPDSYSLOGLOCALUSER=\"${log/a-z/A-Z/}\"|g" %{_sysconfdir}/sysconfig/ldap%{ol_major}
+%_post_syslogadd /var/log/ldap%{ol_major}/ldap.log local4
+perl -pi -e "s|^.*SLAPDSYSLOGLOCALUSER.*|SLAPDSYSLOGLOCALUSER=\"local4\"|" \
+    %{_sysconfdir}/sysconfig/ldap%{ol_major}
 %else
 if [ -f %{_sysconfdir}/syslog.conf -a $1 -eq 1 ]
 then
