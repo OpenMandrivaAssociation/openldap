@@ -1,5 +1,5 @@
 %define pkg_name	openldap
-%define version	2.4.21
+%define version	2.4.22
 %define rel 5
 %global	beta %{nil}
 
@@ -19,7 +19,7 @@
 %define build_slp 0
 %define build_heimdal 0
 %define build_asmmutex 0
-%define build_nssov 0
+%define build_nssov 1
 %global build_migration 0
 
 %if %{?mdkversion:0}%{?!mdkversion:1}
@@ -313,6 +313,7 @@ Requires(post):	%{?!notmdk:%sasllib}%{?notmdk:cyrus-sasl} = %saslver
 Requires: 	%libname = %{version}-%{release}
 Conflicts:	kolab < 1.9.5-0.20050801.4mdk
 Requires: 	%{pkg_name}%{ol_major}-extra-schemas >= 1.3-7
+Requires(pre): 	%{pkg_name}%{ol_major}-extra-schemas >= 1.3-7
 
 %description servers
 OpenLDAP Servers
@@ -696,12 +697,7 @@ popd
 
 %if %build_nssov
 pushd contrib/slapd-modules/nssov
-pushd nss-ldapd/
-./configure
-popd
 perl -pi -e 's/^(\$\(OBJS\):)/#$1/g;s/-rpath [^ ]*//g' Makefile
-#rm -f nssov.la
-#make
 popd
 %endif
 
@@ -983,6 +979,7 @@ install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{nam
 
 %pre servers
 %_pre_useradd ldap %{_var}/lib/ldap /bin/false
+%_pre_groupadd ldap ldap
 # allowing slapd to read hosts.allow and hosts.deny
 %{_bindir}/gpasswd -a ldap adm 1>&2 > /dev/null || :
 
@@ -1200,6 +1197,7 @@ if [ $1 = 0 ]; then
 fi
 %endif
 %_postun_userdel ldap
+%_postun_groupdel ldap
 
 
 %if %mdkversion < 200900
