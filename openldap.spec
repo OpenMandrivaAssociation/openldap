@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.22
-%define rel 2
+%define version	2.4.23
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -205,7 +205,6 @@ Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.8-addpartial-makefile.patch
 Patch5:     openldap-2.4.8-fix-lib-perms.patch
 Patch6:		openldap-2.4.12-test001-check-slapcat.patch
-Patch7:		openldap-2.4.21-proxy-ppolicy.patch
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
@@ -495,7 +494,6 @@ perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 %patch3 -p1 -b .smbonly
 %endif
 %patch4 -p1 -b .addpartial
-%patch7 -p0 -b .proxyppolicy
 
 %patch15 -p1 -b .cldap 
 
