@@ -58,7 +58,7 @@
 %define bundled_db_source_ver 4.8.26
 %if %mdkversion >= 201010
     %global db4_internal 0
-    %define dbver 4.8.26
+    %define dbver 4.8.30
 %endif
 
 %if %mdkversion <= 201000
