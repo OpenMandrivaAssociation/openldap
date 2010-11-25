@@ -19,7 +19,7 @@
 %define build_slp 0
 %define build_heimdal 0
 %define build_asmmutex 0
-%define build_nssov 1
+%define build_nssov 0
 %global build_migration 0
 
 %if %{?mdkversion:0}%{?!mdkversion:1}
@@ -55,10 +55,15 @@
 # we want to use the default db version for each release, so as
 # to make backport binary compatibles
 # excepted for very old systems, where we use bundled db
-%define bundled_db_source_ver 4.8.26
-%if %mdkversion >= 201010
+%define bundled_db_source_ver 4.8.30
+%if %mdkversion > 201010
     %global db4_internal 0
     %define dbver 4.8.30
+%endif
+
+%if %mdkversion <= 201010
+    %global db4_internal 0
+    %define dbver 4.8.26
 %endif
 
 %if %mdkversion <= 201000
@@ -251,7 +256,6 @@ BuildRequires: openslp-devel
 %if %build_heimdal
 BuildRequires: heimdal-devel
 %endif
-#BuildRequires: libgdbm1-devel
 %if %sql
 BuildRequires: 	unixODBC-devel
 %endif
@@ -265,9 +269,7 @@ BuildRequires:	groff
 # for make test:
 BuildRequires:	diffutils
 BuildRoot: 	%{_tmppath}/%{name}-%{version}-root
-Requires: 	%libname = %{version}-%{release}
 Requires:	shadow-utils, setup >= 2.2.0-6mdk
-#%{mklibname db 4.3}
 
 %description
 OpenLDAP is an open source suite of LDAP (Lightweight Directory Access
@@ -795,6 +797,9 @@ cp contrib/slapd-modules/passwd/sha2/slapd-sha2.so %{buildroot}/%{_libdir}/%{nam
 cp contrib/slapd-modules/allop/allop.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/allop/slapo-allop.5 %{buildroot}/%{_mandir}/man5
 #cp -a contrib/slapd-modules/nssov/.libs/nssov.so* %{buildroot}/%{_libdir}/%{name}
+%if %build_nssov
+make DESTDIR=%{buildroot} -C contrib/slapd-modules/nssov install
+%endif
 cp contrib/slapd-modules/addpartial/addpartial.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/autogroup/.libs/autogroup.so* %{buildroot}/%{_libdir}/%{name}
 #cp -a contrib/slapd-modules/cloak/.libs/cloak.so* %{buildroot}/%{_libdir}/%{name}
