@@ -58,7 +58,7 @@
 %define bundled_db_source_ver 4.8.30
 %if %mdkversion > 201010
     %global db4_internal 0
-    %define dbver 4.8.30
+    %define dbver 5.1.19
 %endif
 
 %if %mdkversion <= 201010
@@ -210,6 +210,7 @@ Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.8-addpartial-makefile.patch
 Patch5:     openldap-2.4.8-fix-lib-perms.patch
 Patch6:		openldap-2.4.12-test001-check-slapcat.patch
+Patch7:		openldap-allow-db51.patch
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
@@ -235,7 +236,7 @@ Patch200:	db-4.7.25-fix-format-errors.patch
 BuildRequires:	ed autoconf%{?notmdk: >= 2.5}
 %else
 # txn_nolog added in 4.2.52-6mdk
-BuildRequires: 	db4-devel = %{dbver}
+BuildRequires: 	db-devel = %{dbver}
 %endif
 
 Patch53: %pkg_name-ntlm.patch
@@ -529,6 +530,7 @@ mv tests/scripts/{,broken}test049*
 
 %patch5 -p1
 %patch6 -p1
+%patch7 -p0
 chmod a+rx tests/scripts/test054*
 #aclocal
 autoconf
