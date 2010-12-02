@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.23
-%define rel 3
+%define rel 4
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -57,38 +57,38 @@
 # excepted for very old systems, where we use bundled db
 %define bundled_db_source_ver 4.8.30
 %if %mdkversion > 201010
-    %global db4_internal 0
+    %global db_internal 0
     %define dbver 5.1.19
 %endif
 
 %if %mdkversion <= 201010
-    %global db4_internal 0
+    %global db_internal 0
     %define dbver 4.8.26
 %endif
 
 %if %mdkversion <= 201000
-    %global db4_internal 0
+    %global db_internal 0
     %define dbver 4.7.25
 %endif
 
 %if %mdkversion == 200900
-    %global db4_internal 0
+    %global db_internal 0
     %define dbver 4.6.21
 %endif
 
 %if %mdkversion == 200810
-    %global db4_internal 0
+    %global db_internal 0
     %define dbver 4.6.21
 %endif
 
 %if %mdkversion <= 200800
-    %global db4_internal 1
+    %global db_internal 1
 %endif
 
 %define dbname %(a=%dbver;echo ${a%.*})
-%{?_with_db4internal: %global db4_internal 1}
-%{?_without_db4internal: %global db4_internal 0}
-%if %db4_internal
+%{?_with_dbinternal: %global db_internal 1}
+%{?_without_dbinternal: %global db_internal 0}
+%if %db_internal
 %define dbver %bundled_db_source_ver
 %endif
 
@@ -112,7 +112,7 @@
 %endif
 
 %global clientbin	ldapadd,ldapcompare,ldapdelete,ldapmodify,ldapmodrdn,ldappasswd,ldapsearch,ldapwhoami,ldapexop
-%if %db4_internal
+%if %db_internal
 %global serverbin	slapd_db_archive,slapd_db_checkpoint,slapd_db_deadlock,slapd_db_dump,slapd_db_load,slapd_db_printlog,slapd_db_recover,slapd_db_stat,slapd_db_upgrade,slapd_db_verify,slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester
 %else
 %global serverbin	slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester
@@ -231,7 +231,7 @@ Patch200:	db-4.7.25-fix-format-errors.patch
 # Upstream bdb patches
 
 # http://www.oracle.com/technology/software/products/berkeley-db/db/
-%if %db4_internal
+%if %db_internal
 # used by s_config, which is required by above patch:
 BuildRequires:	ed autoconf%{?notmdk: >= 2.5}
 %else
@@ -301,10 +301,10 @@ Obsoletes:	%{name}-back_ldap < %{version}-%{release}
 Obsoletes:	%{name}-back_passwd < %{version}-%{release}
 Obsoletes:	%{name}-back_sql < %{version}-%{release}
 %endif
-%if !%db4_internal
-Requires(pre):	db4-utils
-Requires(post):	db4-utils
-Requires:	db4-utils = %dbver
+%if !%db_internal
+Requires(pre):	db-utils
+Requires(post):	db-utils
+Requires:	db-utils = %dbver
 %endif
 %if %{?_with_cyrussasl:1}%{!?_with_cyrussasl:0}
 %define saslver %([ -f "%{_includedir}/sasl/sasl.h" ] && echo -e "#include <sasl/sasl.h>\\nSASL_VERSION_MAJOR SASL_VERSION_MINOR SASL_VERSION_STEP"|cpp|awk 'END {printf "%s.%s.%s",$1,$2,$3}' || echo "2.1.22")
@@ -474,7 +474,7 @@ Programs shipped with the test suite which are used by the test suite, and may
 also be useful as load generators etc.
 
 %prep
-%if %db4_internal
+%if %db_internal
 %setup -q -n %{pkg_name}-%{version}%{beta} %{?_with_migration:-a 11} -a 30 
 pushd db-%{dbver} >/dev/null
 
@@ -541,7 +541,7 @@ autoconf
 PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 %serverbuild
 
-%if %db4_internal
+%if %db_internal
 dbdir=`pwd`/db-instroot
 pushd db-%{dbver}/build_unix
 CONFIGURE_TOP="../dist" %configure2_5x \
@@ -747,7 +747,7 @@ popd
 %endif
 #disable icecream:
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
-%if %db4_internal
+%if %db_internal
 dbdir=`pwd`/db-instroot
 export LD_LIBRARY_PATH="${dbdir}/%{_libdir}"
 %endif
@@ -769,7 +769,7 @@ done
 cp contrib/slapd-modules/passwd/sha2/README{,.sha2}
 rm -Rf %{buildroot}
 
-%if %db4_internal
+%if %db_internal
 pushd db-%{dbver}/build_unix
 %makeinstall_std STRIP="/bin/true"
 for i in %{buildroot}/%{_bindir}/db_*;do mv $i ${i/db_/slapd_db_};done
@@ -947,7 +947,7 @@ do
     fi
 done
 # And the man pages too:
-%if %db4_internal
+%if %db_internal
 for OLD in %{buildroot}/%{_mandir}/man?/{%{serverbin},%{serversbin},slapo}*
 %else
 for OLD in %{buildroot}/%{_mandir}/man?/{%{serversbin},slapo}*
@@ -1307,8 +1307,8 @@ fi
 %attr(750,ldap,ldap) %dir /var/log/ldap%{ol_major}
 %config(noreplace) %{_sysconfdir}/logrotate.d/ldap%{ol_major}
 
-%if %db4_internal
-#internal version of db4
+%if %db_internal
+#internal version of db
 %{_libdir}/libslapd%{ol_suffix}_db*
 %attr(755,root,root)%{_bindir}/slapd_db*
 %exclude %{_prefix}/docs
