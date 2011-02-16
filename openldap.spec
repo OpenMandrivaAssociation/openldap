@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.23
-%define rel 4
+%define version	2.4.24
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -131,8 +131,8 @@
 %{?_without_cyrussasl: %define _without_cyrussasl --without-cyrus-sasl}
 %{?_with_gdbm: %global db_conv dbb}
 %{!?_with_gdbm: %global db_conv gdbm}
-%global sql 1
-%{?_without_sql: %global sql 0}
+%global build_sql 1
+%{?_without_sql: %global build_sql 0}
 %global back_perl 0
 
 Summary: 	LDAP servers and sample clients
@@ -210,7 +210,6 @@ Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.8-addpartial-makefile.patch
 Patch5:     openldap-2.4.8-fix-lib-perms.patch
 Patch6:		openldap-2.4.12-test001-check-slapcat.patch
-Patch7:		openldap-allow-db51.patch
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
@@ -530,7 +529,6 @@ mv tests/scripts/{,broken}test049*
 
 %patch5 -p1
 %patch6 -p1
-%patch7 -p0
 chmod a+rx tests/scripts/test054*
 #aclocal
 autoconf
