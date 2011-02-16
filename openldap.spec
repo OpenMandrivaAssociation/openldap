@@ -257,7 +257,7 @@ BuildRequires: openslp-devel
 %if %build_heimdal
 BuildRequires: heimdal-devel
 %endif
-%if %sql
+%if %build_sql
 BuildRequires: 	unixODBC-devel
 %endif
 %if %back_perl
@@ -430,7 +430,7 @@ Requires: 	openldap-servers = %{version}-%release
 %description back_passwd
 The passwd database backend module for OpenLDAP daemon
 %endif
-%if %sql && %build_modpacks
+%if %build_sql && %build_modpacks
 %package back_sql
 Summary: 	Module sql for OpenLDAP 
 Group: 		System/Libraries
@@ -661,7 +661,7 @@ export ac_cv_header_sys_epoll_h=no
 %else
 	--enable-perl=no \
 %endif
-%if %sql
+%if %build_sql
 	--enable-sql=mod \
 %else
 	--enable-sql=no \
@@ -1369,7 +1369,7 @@ fi
 %{_libdir}/%{name}/back_passwd*.so
 %endif #build_modpacks
 
-%if %sql && %build_modpacks
+%if %build_sql && %build_modpacks
 %files back_sql
 %defattr(-,root,root)
 %dir %{_libdir}/%{name}
