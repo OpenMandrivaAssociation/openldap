@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.24
-%define rel 1
+%define rel 2
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -19,7 +19,7 @@
 %define build_slp 0
 %define build_heimdal 0
 %define build_asmmutex 0
-%define build_nssov 0
+%define build_nssov 1
 %global build_migration 0
 
 %if %{?mdkversion:0}%{?!mdkversion:1}
@@ -55,10 +55,12 @@
 # we want to use the default db version for each release, so as
 # to make backport binary compatibles
 # excepted for very old systems, where we use bundled db
+%define dbutils db4-utils
 %define bundled_db_source_ver 4.8.30
 %if %mdkversion > 201010
     %global db_internal 0
     %define dbver 5.1.19
+    %define dbutils db-utils
 %endif
 
 %if %mdkversion <= 201010
@@ -210,6 +212,7 @@ Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.8-addpartial-makefile.patch
 Patch5:     openldap-2.4.8-fix-lib-perms.patch
 Patch6:		openldap-2.4.12-test001-check-slapcat.patch
+Patch7:         openldap-2.4.24-fix-contrib-install.patch
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
@@ -301,9 +304,9 @@ Obsoletes:	%{name}-back_passwd < %{version}-%{release}
 Obsoletes:	%{name}-back_sql < %{version}-%{release}
 %endif
 %if !%db_internal
-Requires(pre):	db-utils
-Requires(post):	db-utils
-Requires:	db-utils = %dbver
+Requires(pre):	%dbutils
+Requires(post):	%dbutils
+Requires:	%dbutils = %dbver
 %endif
 %if %{?_with_cyrussasl:1}%{!?_with_cyrussasl:0}
 %define saslver %([ -f "%{_includedir}/sasl/sasl.h" ] && echo -e "#include <sasl/sasl.h>\\nSASL_VERSION_MAJOR SASL_VERSION_MINOR SASL_VERSION_STEP"|cpp|awk 'END {printf "%s.%s.%s",$1,$2,$3}' || echo "2.1.22")
@@ -495,7 +498,8 @@ perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 %if !%build_heimdal
 %patch3 -p1 -b .smbonly
 %endif
-%patch4 -p1 -b .addpartial
+%patch4 -p1 -b .contrib
+%patch7 -p1 -b .contrib
 
 %patch15 -p1 -b .cldap 
 
@@ -679,12 +683,79 @@ make depend
 
 make 
 export LIBTOOL=`pwd`/libtool
-make libdir=%{_libdir} -C contrib/slapd-modules/smbk5pwd
-pushd contrib/slapd-modules/acl
-#broken
+
+# Contrib modules
+#acl (broken)
+#pushd contrib/slapd-modules/acl
 #gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g \
 #        -o acl-posixgroup.so posixgroup.c
+#popd
+
+#addpartial
+make -C contrib/slapd-modules/addpartial
+
+#allop
+pushd contrib/slapd-modules/allop
+gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g -o allop.so allop.c
 popd
+
+#allowed
+pushd contrib/slapd-modules/allowed
+gcc -shared -I../../../include -I../../../servers/slapd -Wall -g \
+        -o allowed.so allowed.c
+popd
+
+#autogroup
+make -C contrib/slapd-modules/autogroup
+
+#cloak
+perl -pi -e 's/-rpath [^ ]*//g' contrib/slapd-modules/cloak/Makefile
+make -C contrib/slapd-modules/cloak/
+
+#comp_match - broken
+#denyop
+pushd contrib/slapd-modules/denyop
+gcc -shared -fPIC -I../../../include -Wall -g -o denyop.so denyop.c
+popd
+
+#dsaschema
+pushd contrib/slapd-modules/dsaschema
+gcc -shared -fPIC -I../../../include -Wall -g -o dsaschema.so dsaschema.c
+popd
+
+#dupent FIXME
+#kinit
+pushd contrib/slapd-modules/kinit
+gcc -fPIC -c -I ../../../include/ -I ../../../servers/slapd kinit.c
+gcc -shared -o kinit.so kinit.o -lkrb5
+popd
+
+#lastbind
+make -C contrib/slapd-modules/lastbind
+
+#lastmod
+pushd contrib/slapd-modules/lastmod
+gcc -shared -fPIC -I../../../include -Wall -g -o lastmod.so lastmod.c
+popd
+
+#noopsrch
+make -C contrib/slapd-modules/noopsrch
+
+#nops
+make -C contrib/slapd-modules/nops
+#pushd contrib/slapd-modules/nops
+#gcc -shared -fPIC -I../../../include -Wall -g -o nops.so nops.c
+#popd
+
+#nssov
+%if %build_nssov
+pushd contrib/slapd-modules/nssov
+#perl -pi -e 's/^(\$\(OBJS\):)/#$1/g;s/-rpath [^ ]*//g' Makefile
+make
+popd
+%endif
+
+#passwd
 pushd contrib/slapd-modules/passwd
 gcc -shared -fPIC -I../../../include -Wall -g -o pw-netscape.so netscape.c
 gcc -shared -fPIC -I../../../include -I /usr/kerberos/include -Wall -g -DHAVE_KRB5 -o pw-kerberos.so kerberos.c
@@ -693,38 +764,22 @@ gcc -shared -fPIC -I../../../include -I /usr/kerberos/include -Wall -g -DHAVE_KR
 perl -pi -e 's/(CCFLAGS.*)$/$1 -fPIC/' sha2/Makefile
 make -C sha2
 popd
-pushd contrib/slapd-modules/allop
-gcc -shared -fPIC -I../../../include -I../../../servers/slapd -Wall -g -o allop.so allop.c
-popd
 
-%if %build_nssov
-pushd contrib/slapd-modules/nssov
-perl -pi -e 's/^(\$\(OBJS\):)/#$1/g;s/-rpath [^ ]*//g' Makefile
-popd
-%endif
+#proxyOld, needs some work ...
+#CC=g++ make -C contrib/slapd-modules/proxyOld
 
-perl -pi -e 's/-rpath [^ ]*//g' contrib/slapd-modules/cloak/Makefile
-make -C contrib/slapd-modules/cloak/
-pushd contrib/slapd-modules/dsaschema
-gcc -shared -fPIC -I../../../include -Wall -g -o dsaschema.so dsaschema.c
-popd
-pushd contrib/slapd-modules/lastmod
-gcc -shared -fPIC -I../../../include -Wall -g -o lastmod.so lastmod.c
-popd
-pushd contrib/slapd-modules/nops
-gcc -shared -fPIC -I../../../include -Wall -g -o nops.so nops.c
-popd
+#samba4, not useful yet?
+
+#smbk5pwd
+make libdir=%{_libdir} -C contrib/slapd-modules/smbk5pwd
+
+#trace
 pushd contrib/slapd-modules/trace
 gcc -shared -fPIC -I../../../include -Wall -g -o trace.so trace.c
 popd
-pushd contrib/slapd-modules/denyop
-gcc -shared -fPIC -I../../../include -Wall -g -o denyop.so denyop.c
-popd
 
 # http://wiki.mandriva.com/en/2009-underlinking-overlinking
-LDFLAGS=${LDFLAGS//-Wl,--no-undefined/}
-make -C contrib/slapd-modules/addpartial
-make -C contrib/slapd-modules/autogroup
+#LDFLAGS=${LDFLAGS//-Wl,--no-undefined/}
 # Not shipped yet: comp_match,proxyOld
 
 
@@ -760,7 +815,7 @@ make -C tests %{!?tests:test}%{?tests:%tests}
 #disable icecream:
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 export DONT_GPRINTIFY=1
-for i in smbk5pwd passwd acl allop addpartial autogroup nssov dsaschema
+for i in acl addpartial allop allowed autogroup dsaschema kinit nssov passwd smbk5pwd
 do
 cp -af contrib/slapd-modules/$i/README{,.$i}
 done
@@ -790,24 +845,35 @@ do
   fi
 done
 %endif
-#cp contrib/slapd-modules/acl/acl-posixgroup.so %{buildroot}/%{_libdir}/%{name}
-cp contrib/slapd-modules/passwd/pw-netscape.so %{buildroot}/%{_libdir}/%{name}
-cp contrib/slapd-modules/passwd/pw-kerberos.so %{buildroot}/%{_libdir}/%{name}
-cp contrib/slapd-modules/passwd/sha2/slapd-sha2.so %{buildroot}/%{_libdir}/%{name}
-cp contrib/slapd-modules/allop/allop.so %{buildroot}/%{_libdir}/%{name}
+
 cp contrib/slapd-modules/allop/slapo-allop.5 %{buildroot}/%{_mandir}/man5
-#cp -a contrib/slapd-modules/nssov/.libs/nssov.so* %{buildroot}/%{_libdir}/%{name}
-%if %build_nssov
-make DESTDIR=%{buildroot} -C contrib/slapd-modules/nssov install
-%endif
-cp contrib/slapd-modules/addpartial/addpartial.so %{buildroot}/%{_libdir}/%{name}
-cp contrib/slapd-modules/autogroup/.libs/autogroup.so* %{buildroot}/%{_libdir}/%{name}
-#cp -a contrib/slapd-modules/cloak/.libs/cloak.so* %{buildroot}/%{_libdir}/%{name}
-#cp contrib/slapd-modules/cloak/slapo-cloak.5 %{buildroot}/%{_mandir}/man5
-cp contrib/slapd-modules/lastmod/lastmod.so %{buildroot}/%{_libdir}/%{name}
+cp contrib/slapd-modules/cloak/slapo-cloak.5 %{buildroot}/%{_mandir}/man5
+cp contrib/slapd-modules/lastbind/slapo-lastbind.5 %{buildroot}/%{_mandir}/man5
 cp contrib/slapd-modules/lastmod/slapo-lastmod.5 %{buildroot}/%{_mandir}/man5
-cp contrib/slapd-modules/nops/nops.so %{buildroot}/%{_libdir}/%{name}
 cp contrib/slapd-modules/nops/slapo-nops.5 %{buildroot}/%{_mandir}/man5
+
+cp contrib/slapd-modules/*/*.so %{buildroot}/%{_libdir}/%{name}
+
+for i in autogroup dupent lastbind noopsrch nops
+do make DESTDIR=%{buildroot} mandir=%{_mandir} moduledir=%{_libdir}/%{name} -C contrib/slapd-modules/$i install
+rm -f %{buildroot}/%{_libdir}/%{name}/$i.a
+done
+    
+#nssov
+%if %build_nssov
+#hack
+#cp -a contrib/slapd-modules/nssov/nssov.la contrib/slapd-modules/nssov/.libs/nssov.lai
+make DESTDIR=%{buildroot} -C contrib/slapd-modules/nssov \
+    moduledir=%{_libdir}/%{name} \
+    schemadir=%{_sysconfdir}/%{name}/schema \
+    install
+#cp -a contrib/slapd-modules/nssov/.libs/nssov.so* %{buildroot}/%{_libdir}/%{name}
+rm -f %{buildroot}/%{_libdir}/%{name}/nssov.a
+# We already had ldapns.schema in extra-schemas
+rm -f %{buildroot}/%{_sysconfdir}/%{name}/schema/ldapns.schema
+%endif
+#passwd
+
 
 # try and ship the tests such that they will run properly
 
@@ -1313,15 +1379,19 @@ fi
 %exclude %{_includedir}/db*.h
 %endif
 
-%doc contrib/slapd-modules/smbk5pwd/README.smbk5pwd
-%doc contrib/slapd-modules/passwd/README.passwd
 %doc contrib/slapd-modules/acl/README.acl
-%doc contrib/slapd-modules/allop/README.allop
 %doc contrib/slapd-modules/addpartial/README.addpartial
+%doc contrib/slapd-modules/allop/README.allop
+%doc contrib/slapd-modules/allowed/README.allowed
 %doc contrib/slapd-modules/autogroup/README.autogroup
-#%doc contrib/slapd-modules/nssov/README.nssov
 %doc contrib/slapd-modules/dsaschema/README.dsaschema
+%doc contrib/slapd-modules/kinit/README.kinit
+%doc contrib/slapd-modules/passwd/README.passwd
 %doc contrib/slapd-modules/passwd/sha2/README.sha2
+%doc contrib/slapd-modules/smbk5pwd/README.smbk5pwd
+%if %build_nssov
+%doc contrib/slapd-modules/nssov/README.nssov
+%endif
 
 %files clients
 %defattr(-,root,root)
