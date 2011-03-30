@@ -236,7 +236,7 @@ Patch200:	db-4.7.25-fix-format-errors.patch
 BuildRequires:	ed autoconf%{?notmdk: >= 2.5}
 %else
 # txn_nolog added in 4.2.52-6mdk
-BuildRequires: 	db-devel = %{dbver}
+BuildRequires: 	db-devel >= %{dbver}
 %endif
 
 Patch53: %pkg_name-ntlm.patch
