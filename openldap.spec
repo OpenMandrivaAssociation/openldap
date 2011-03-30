@@ -58,7 +58,7 @@
 %define bundled_db_source_ver 4.8.30
 %if %mdkversion > 201010
     %global db_internal 0
-    %define dbver 5.1.19
+    %define dbver 5.1.25
     %define dbutils db-utils
 %endif
 
