@@ -731,7 +731,7 @@ make -C tests %{!?tests:test}%{?tests:%tests}
 #disable icecream:
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 export DONT_GPRINTIFY=1
-for i in acl addpartial allop allowed autogroup dsaschema kinit nssov passwd smbk5pwd
+for i in acl addpartial allop allowed autogroup kinit nssov passwd smbk5pwd
 do
 cp -af contrib/slapd-modules/$i/README{,.$i}
 done
@@ -771,7 +771,8 @@ cp contrib/slapd-modules/nops/slapo-nops.5 %{buildroot}/%{_mandir}/man5
 #cp contrib/slapd-modules/*/*.so %{buildroot}/%{_libdir}/%{name}
 
 #smbk5pwd skipped, installed as smbpwd above
-for i in addpartial allop allowed autogroup cloak denyop dsaschema dupent \
+#dsaschema broken on 32bit
+for i in addpartial allop allowed autogroup cloak denyop dupent \
     kinit lastbind lastmod noopsrch nops nssov passwd passwd/sha2 trace
 do 
     if make -C contrib/slapd-modules/$i test
