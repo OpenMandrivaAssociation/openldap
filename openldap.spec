@@ -684,7 +684,10 @@ export LIBTOOL=`pwd`/libtool
 perl -pi -e 's/radius.la//g' contrib/slapd-modules/passwd/Makefile
 #acl broken
 for i in addpartial allop allowed autogroup cloak denyop dsaschema dupent  \
-    kinit lastbind lastmod noopsrch nops nssov passwd passwd/sha2 smbk5pwd trace
+%if %mdkversion >= 201010
+    kinit \
+%endif
+    lastbind lastmod noopsrch nops nssov passwd passwd/sha2 smbk5pwd trace
 do
     make -C contrib/slapd-modules/$i libdir=%{_libdir} moduledir=%{_libdir}/%{name}
 done
@@ -731,7 +734,11 @@ make -C tests %{!?tests:test}%{?tests:%tests}
 #disable icecream:
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 export DONT_GPRINTIFY=1
-for i in acl addpartial allop allowed autogroup kinit nssov passwd smbk5pwd
+for i in acl addpartial allop allowed autogroup \
+%if %mdkversion >= 201010
+ kinit \
+%endif
+    nssov passwd smbk5pwd
 do
 cp -af contrib/slapd-modules/$i/README{,.$i}
 done
@@ -743,6 +750,8 @@ pushd db-%{dbver}/build_unix
 %makeinstall_std STRIP="/bin/true"
 for i in %{buildroot}/%{_bindir}/db_*;do mv $i ${i/db_/slapd_db_};done
 popd
+# For contrib tests
+export LD_LIBRARY_PATH=%{buildroot}/%{_libdir}
 %endif
 
 %makeinstall_std STRIP="" 
@@ -773,7 +782,10 @@ cp contrib/slapd-modules/nops/slapo-nops.5 %{buildroot}/%{_mandir}/man5
 #smbk5pwd skipped, installed as smbpwd above
 #dsaschema broken on 32bit
 for i in addpartial allop allowed autogroup cloak denyop dupent \
-    kinit lastbind lastmod noopsrch nops nssov passwd passwd/sha2 trace
+%if %mdkversion >= 201010
+    kinit \
+%endif
+    lastbind lastmod noopsrch nops nssov passwd passwd/sha2 trace
 do 
     if make -C contrib/slapd-modules/$i test
     then make DESTDIR=%{buildroot} mandir=%{_mandir} moduledir=%{_libdir}/%{name} schemadir=%{_sysconfdir}/%{name}/schema -C contrib/slapd-modules/$i install
@@ -1301,8 +1313,10 @@ fi
 %doc contrib/slapd-modules/allop/README.allop
 %doc contrib/slapd-modules/allowed/README.allowed
 %doc contrib/slapd-modules/autogroup/README.autogroup
-%doc contrib/slapd-modules/dsaschema/README.dsaschema
+#doc contrib/slapd-modules/dsaschema/README.dsaschema
+%if %mdkversion >= 201010
 %doc contrib/slapd-modules/kinit/README.kinit
+%endif
 %doc contrib/slapd-modules/passwd/README.passwd
 %doc contrib/slapd-modules/passwd/sha2/README.sha2
 %doc contrib/slapd-modules/smbk5pwd/README.smbk5pwd
