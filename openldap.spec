@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.25
-%define rel 2
+%define rel 3
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -304,7 +304,7 @@ Obsoletes:	%{name}-back_sql < %{version}-%{release}
 %if !%db_internal
 Requires(pre):	%dbutils
 Requires(post):	%dbutils
-Requires:	%dbutils = %dbver
+Requires:	%dbutils >= %dbver
 %endif
 %if %{?_with_cyrussasl:1}%{!?_with_cyrussasl:0}
 %define saslver %([ -f "%{_includedir}/sasl/sasl.h" ] && echo -e "#include <sasl/sasl.h>\\nSASL_VERSION_MAJOR SASL_VERSION_MINOR SASL_VERSION_STEP"|cpp|awk 'END {printf "%s.%s.%s",$1,$2,$3}' || echo "2.1.22")
