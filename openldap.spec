@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.25
-%define rel 4
+%define rel 5
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -971,6 +971,10 @@ install -m 644 include/ac/*.h  %{buildroot}%{_includedir}/%{name}/include/ac
 install -m 644 servers/slapd/*.h  %{buildroot}%{_includedir}/%{name}/slapd
 install -d -m 755 %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
 install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
+
+%if "%{_lib}" == "lib64"
+perl -pi -e "s|-L/usr/lib\b|-L%{_libdir}|g" %{buildroot}%{_libdir}/*.la
+%endif
 
 %clean 
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
