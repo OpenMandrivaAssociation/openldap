@@ -18,6 +18,8 @@
 %define build_modpacks 0
 %define build_slp 0
 %define build_heimdal 0
+%define build_nssov 1
+%define build_smbk5pwd 1
 %define build_asmmutex 0
 %global build_migration 0
 
@@ -43,6 +45,10 @@
 %{?_without_slp: %global build_slp 0}
 %{?_with_heimdal: %global build_heimdal 1}
 %{?_without_heimdal: %global build_heimdal 0}
+%{?_with_nssov: %global build_nssov 1}
+%{?_without_nssov: %global build_nssov 0}
+%{?_with_smbk5pwd: %global build_smbk5pwd 1}
+%{?_without_smbk5pwd: %global build_smbk5pwd 0}
 %{?_with_asmmutex: %global build_asmmutex 1}
 %{?_without_asmmutex: %global build_asmmutex 0}
 
@@ -532,7 +538,8 @@ mv tests/scripts/{,broken}test049*
 %patch6 -p1
 chmod a+rx tests/scripts/test054*
 #aclocal
-autoconf
+#perl -pi -e 's/^(AC_PREREQ.2.5)/${1}7/g' configure.in
+#autoconf
 
 %build
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
@@ -607,13 +614,13 @@ export ol_cv_header_linux_threads=no
 %endif
 #rh only:
 export CPPFLAGS="-I%{_prefix}/kerberos/include $CPPFLAGS"
+export LDFLAGS="-L%{_prefix}/kerberos/%{_lib} $LDFLAGS"
 %if %{?openldap_fd_setsize:1}%{!?openldap_fd_setsize:0}
 CPPFLAGS="$CPPFLAGS -DOPENLDAP_FD_SETSIZE=%{openldap_fd_setsize}"
 %endif
 # FIXME glibc 2.8 breakage, this is not the correct fix, see
 # http://www.openldap.org/its/index.cgi/Build?id=5464;selectid=5464
 CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
-export LDFLAGS="-L%{_prefix}/kerberos/%{_lib} $LDFLAGS"
 # building for systems with kernel < 2.6 requires building without epoll support
 %if %{mdkversion} < 1000 || %{?_without_epoll:1}%{!?_without_epoll:0}
 export ac_cv_header_sys_epoll_h=no
@@ -681,13 +688,21 @@ make depend
 make 
 export LIBTOOL=`pwd`/libtool
 
+if [ -d /usr/kerberos/%{_lib} ]; then export LIBRARY_PATH=/usr/kerberos/%{_lib}; fi
 perl -pi -e 's/radius.la//g' contrib/slapd-modules/passwd/Makefile
 #acl broken
 for i in addpartial allop allowed autogroup cloak denyop dsaschema dupent  \
 %if %mdkversion >= 201010
     kinit \
 %endif
-    lastbind lastmod noopsrch nops nssov passwd passwd/sha2 smbk5pwd trace
+    lastbind lastmod noopsrch nops \
+%if %build_nssov
+    nssov \
+%endif
+%if %build_smbk5pwd
+    smbk5pwd \
+%endif
+    passwd passwd/sha2 trace
 do
     make -C contrib/slapd-modules/$i libdir=%{_libdir} moduledir=%{_libdir}/%{name}
 done
@@ -738,7 +753,13 @@ for i in acl addpartial allop allowed autogroup \
 %if %mdkversion >= 201010
  kinit \
 %endif
-    nssov passwd smbk5pwd
+%if %build_nssov
+    nssov \
+%endif
+%if %build_smbk5pwd
+    smbk5pwd \
+%endif
+    passwd 
 do
 cp -af contrib/slapd-modules/$i/README{,.$i}
 done
@@ -756,6 +777,7 @@ export LD_LIBRARY_PATH=%{buildroot}/%{_libdir}
 
 %makeinstall_std STRIP="" 
 
+%if %build_smbk5pwd
 cp -a contrib/slapd-modules/smbk5pwd/.libs/smbk5pwd.so* %{buildroot}/%{_libdir}/%{name}
 %if !%{build_heimdal}
 for i in %{buildroot}/%{_libdir}/%{name}/smbk5pwd*
@@ -769,6 +791,7 @@ do
     mv $i ${i/k5/}
   fi
 done
+%endif
 %endif
 
 cp contrib/slapd-modules/allop/slapo-allop.5 %{buildroot}/%{_mandir}/man5
@@ -785,7 +808,11 @@ for i in addpartial allop allowed autogroup cloak denyop dupent \
 %if %mdkversion >= 201010
     kinit \
 %endif
-    lastbind lastmod noopsrch nops nssov passwd passwd/sha2 trace
+    lastbind lastmod noopsrch nops \
+%if %build_nssov
+    nssov \
+%endif
+    passwd passwd/sha2 trace
 do 
     if make -C contrib/slapd-modules/$i test
     then make DESTDIR=%{buildroot} mandir=%{_mandir} moduledir=%{_libdir}/%{name} schemadir=%{_sysconfdir}/%{name}/schema -C contrib/slapd-modules/$i install
@@ -1323,8 +1350,12 @@ fi
 %endif
 %doc contrib/slapd-modules/passwd/README.passwd
 %doc contrib/slapd-modules/passwd/sha2/README.sha2
+%if %build_smbk5pwd
 %doc contrib/slapd-modules/smbk5pwd/README.smbk5pwd
+%endif
+%if %build_nssov
 %doc contrib/slapd-modules/nssov/README.nssov
+%endif
 
 %files clients
 %defattr(-,root,root)
