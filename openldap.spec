@@ -23,6 +23,7 @@
 %define build_asmmutex 0
 %global build_migration 0
 
+%{?mgaversion:%global mdkversion 201100}
 %if %{?mdkversion:0}%{?!mdkversion:1}
 # OK, we're not on a Mandriva box ... set this to the lowest we support
 # and define a new macro we can use to know we're not in Mandriva
@@ -91,6 +92,16 @@
 %if %mdkversion <= 200800
     %global db_internal 1
 %endif
+
+%if %{?mgaversion:1}%{?!mgaversion:0}
+%if %mgaversion > 1
+	%define dbutils db51-utils
+        %define dbver 5.1.25
+%else
+	%define dbutils db51-utils
+        %define dbver 5.1.19
+%endif
+%endif # mgaversion
 
 %define dbname %(a=%dbver;echo ${a%.*})
 %{?_with_dbinternal: %global db_internal 1}
