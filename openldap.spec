@@ -321,7 +321,12 @@ Obsoletes:	%{name}-back_sql < %{version}-%{release}
 %if !%db_internal
 Requires(pre):	%dbutils
 Requires(post):	%dbutils
-Requires:	%dbutils >= %dbver
+# slapd checks at startup if the library version matches exactly what it
+# was compiled against, so we cant allow newer versions, e.g.:
+#bdb_back_initialize: BDB library version mismatch: expected Berkeley DB 4.8.26: (December 30, 2009), got Berkeley DB 4.8.30: (March 25, 2011)
+# This might need to be changed to a library dependency, but we need to verify
+# library provides on multiple distros before doing that
+Requires:	%dbutils = %dbver
 %endif
 %if %{?_with_cyrussasl:1}%{!?_with_cyrussasl:0}
 %define saslver %([ -f "%{_includedir}/sasl/sasl.h" ] && echo -e "#include <sasl/sasl.h>\\nSASL_VERSION_MAJOR SASL_VERSION_MINOR SASL_VERSION_STEP"|cpp|awk 'END {printf "%s.%s.%s",$1,$2,$3}' || echo "2.1.22")
