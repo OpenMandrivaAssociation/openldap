@@ -284,6 +284,7 @@ BuildRequires:  ncurses-devel >= 5.0
 BuildRequires: tcp_wrappers%{?!notmdk:-devel} libtool%{?!notmdk:-devel}
 BuildRequires:  krb5-devel
 BuildRequires:	groff
+BuildRequires:	pam-devel
 # for make test:
 BuildRequires:	diffutils
 BuildRoot: 	%{_tmppath}/%{name}-%{version}-root
