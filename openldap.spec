@@ -872,8 +872,8 @@ install -m755 tests/progs/.libs/slapd-* %{buildroot}/%{_bindir}
 ### some hack
 perl -pi -e "s| -L../liblber/.libs||g" %{buildroot}%{_libdir}/libldap.la
 
-perl -pi -e  "s,-L$RPM_BUILD_DIR\S+%{_libdir},,g" %{buildroot}/%{_libdir}/lib*.la
-#sed -i -e "s|-L$RPM_BUILD_DIR/%{name}-%{version}/db-instroot/%{_libdir}||g" %{buildroot}/%{_libdir}/*la
+perl -pi -e  "s,-L%{_builddir}\S+%{_libdir},,g" %{buildroot}/%{_libdir}/lib*.la
+#sed -i -e "s|-L%{_builddir}/%{name}-%{version}/db-instroot/%{_libdir}||g" %{buildroot}/%{_libdir}/*la
 #%{buildroot}/%{_libdir}/%{name}/*.la 
 
 ### Init scripts
@@ -1022,7 +1022,7 @@ perl -pi -e "s|-L/usr/lib\b|-L%{_libdir}|g" %{buildroot}%{_libdir}/*.la
 
 %clean 
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
-#rm -rf $RPM_BUILD_DIR/%{name}-%{version}
+#rm -rf %{_builddir}/%{name}-%{version}
 
 
 %pre servers
