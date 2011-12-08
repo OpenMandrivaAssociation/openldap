@@ -564,6 +564,10 @@ chmod a+rx tests/scripts/test054*
 PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 %serverbuild
 
+# it does not work with -fPIE and someone added that to the serverbuild macro...
+CFLAGS=`echo $CFLAGS|sed -e 's|-fPIE||g'`
+CXXFLAGS=`echo $CXXFLAGS|sed -e 's|-fPIE||g'`
+
 %if %db_internal
 dbdir=`pwd`/db-instroot
 pushd db-%{dbver}/build_unix
