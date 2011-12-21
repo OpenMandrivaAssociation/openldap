@@ -1,6 +1,6 @@
 %define pkg_name	openldap
-%define version	2.4.26
-%define rel 4
+%define version	2.4.28
+%define rel 0
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -22,6 +22,7 @@
 %define build_smbk5pwd 1
 %define build_asmmutex 0
 %global build_migration 0
+%define build_test 1
 
 %{?mgaversion:%global mdkversion 201100}
 %if %{?mdkversion:0}%{?!mdkversion:1}
@@ -737,7 +738,7 @@ done
 #LDFLAGS=${LDFLAGS//-Wl,--no-undefined/}
 # Not shipped yet: comp_match,proxyOld
 
-
+%if %build_test
 %check
 %if %{!?_without_test:1}%{?_without_test:0}
 %if !%{build_system}
@@ -764,6 +765,7 @@ export LD_LIBRARY_PATH="${dbdir}/%{_libdir}"
 # Use a pseudo-random number between 9000 and 10000 as base port for slapd in tests
 export SLAPD_BASEPORT=$[9000+RANDOM%1000]
 make -C tests %{!?tests:test}%{?tests:%tests}
+%endif
 %endif
 
 %install
@@ -1023,6 +1025,9 @@ install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{nam
 %if "%{_lib}" == "lib64"
 perl -pi -e "s|-L/usr/lib\b|-L%{_libdir}|g" %{buildroot}%{_libdir}/*.la
 %endif
+
+# cleanup
+rm -f %{buildroot}%{_libdir}/%{name}/apr1.a
 
 %clean 
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
@@ -1311,6 +1316,7 @@ fi
 %dir %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d
 %attr(640,root,ldap) %{_sysconfdir}/%{name}/DB_CONFIG.example
 %attr(640,root,ldap) %config %{_sysconfdir}/%{name}/slapd.access.conf
+%attr(640,root,ldap) %config %{_sysconfdir}/%{name}/slapd.ldif
 
 #dir %{_sysconfdir}/ssl/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/schema/*.schema
@@ -1400,7 +1406,7 @@ fi
 
 %files -n %libname-static-devel
 %defattr(-,root,root)
-%{_libdir}/lib*.a
+%{_libdir}/*.a
 
 %if %build_modpacks
 %files back_dnssrv
