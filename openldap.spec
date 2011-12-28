@@ -1,6 +1,6 @@
 %define pkg_name	openldap
 %define version	2.4.28
-%define rel 0
+%define rel 1
 %global	beta %{nil}
 
 %{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
@@ -22,7 +22,6 @@
 %define build_smbk5pwd 1
 %define build_asmmutex 0
 %global build_migration 0
-%define build_test 1
 
 %{?mgaversion:%global mdkversion 201100}
 %if %{?mdkversion:0}%{?!mdkversion:1}
@@ -63,11 +62,14 @@
 # to make backport binary compatibles
 # excepted for very old systems, where we use bundled db
 %define dbutils db4-utils
+%define dbutilsprefix db_
 %define bundled_db_source_ver 4.8.30
+%define dbdevel db-devel
 %if %mdkversion > 201020
     %global db_internal 0
     %define dbver 5.1.25
     %define dbutils db-utils
+    %define dbutilsprefix db51_
 %endif
 
 %if %mdkversion <= 201020
@@ -98,9 +100,12 @@
 %if %mgaversion > 1
 	%define dbutils db51-utils
         %define dbver 5.1.25
+	%define dbutilsprefix db51_
+        %define dbdevel db5-devel
 %else
 	%define dbutils db51-utils
         %define dbver 5.1.19
+	%define dbutilsprefix db51_
 %endif
 %endif # mgaversion
 
@@ -254,7 +259,7 @@ Patch200:	db-4.7.25-fix-format-errors.patch
 BuildRequires:	ed autoconf%{?notmdk: >= 2.5}
 %else
 # txn_nolog added in 4.2.52-6mdk
-BuildRequires: 	db-devel >= %{dbver}
+BuildRequires: 	%dbdevel >= %{dbver}
 %endif
 
 Patch53: %pkg_name-ntlm.patch
@@ -285,7 +290,6 @@ BuildRequires:  ncurses-devel >= 5.0
 BuildRequires: tcp_wrappers%{?!notmdk:-devel} libtool%{?!notmdk:-devel}
 BuildRequires:  krb5-devel
 BuildRequires:	groff
-BuildRequires:	pam-devel
 # for make test:
 BuildRequires:	diffutils
 BuildRoot: 	%{_tmppath}/%{name}-%{version}-root
@@ -560,7 +564,6 @@ chmod a+rx tests/scripts/test054*
 #autoconf
 
 %build
-[ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
 #disable icecream:
 PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 %serverbuild
@@ -738,7 +741,7 @@ done
 #LDFLAGS=${LDFLAGS//-Wl,--no-undefined/}
 # Not shipped yet: comp_match,proxyOld
 
-%if %build_test
+
 %check
 %if %{!?_without_test:1}%{?_without_test:0}
 %if !%{build_system}
@@ -765,7 +768,6 @@ export LD_LIBRARY_PATH="${dbdir}/%{_libdir}"
 # Use a pseudo-random number between 9000 and 10000 as base port for slapd in tests
 export SLAPD_BASEPORT=$[9000+RANDOM%1000]
 make -C tests %{!?tests:test}%{?tests:%tests}
-%endif
 %endif
 
 %install
@@ -878,13 +880,14 @@ install -m755 tests/progs/.libs/slapd-* %{buildroot}/%{_bindir}
 ### some hack
 perl -pi -e "s| -L../liblber/.libs||g" %{buildroot}%{_libdir}/libldap.la
 
-perl -pi -e  "s,-L%{_builddir}\S+%{_libdir},,g" %{buildroot}/%{_libdir}/lib*.la
-#sed -i -e "s|-L%{_builddir}/%{name}-%{version}/db-instroot/%{_libdir}||g" %{buildroot}/%{_libdir}/*la
+perl -pi -e  "s,-L$RPM_BUILD_DIR\S+%{_libdir},,g" %{buildroot}/%{_libdir}/lib*.la
+#sed -i -e "s|-L$RPM_BUILD_DIR/%{name}-%{version}/db-instroot/%{_libdir}||g" %{buildroot}/%{_libdir}/*la
 #%{buildroot}/%{_libdir}/%{name}/*.la 
 
 ### Init scripts
 install -d %{buildroot}%{_initrddir}
 install -m 755 %{SOURCE1} %{buildroot}%{_initrddir}/ldap%{ol_major}
+perl -pi -e 's,%{_bindir}/db_,%{_bindir}/%{dbutilsprefix},g' %{buildroot}%{_initrddir}/ldap%{ol_major}
 
 install -d %{buildroot}%{_sysconfdir}/sysconfig
 install -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/sysconfig/ldap%{ol_major}
@@ -924,6 +927,7 @@ do
 	install -d %{buildroot}/%{_sysconfdir}/cron.${i}
 	ln -s %{_datadir}/%{name}/scripts/ldap-hot-db-backup %{buildroot}/%{_sysconfdir}/cron.${i}/ldap-hot-db-backup%{ol_major}
 done
+perl -pi -e 's,%{_bindir}/db_,%{_bindir}/%{dbutilsprefix},g' %{buildroot}/%{_datadir}/%{name}/scripts/ldap-common
 
 ### create local.schema
 echo "# This is a good place to put your schema definitions " > %{buildroot}%{_sysconfdir}/%{name}/schema/local.schema
@@ -1022,16 +1026,13 @@ install -m 644 servers/slapd/*.h  %{buildroot}%{_includedir}/%{name}/slapd
 install -d -m 755 %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
 install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
 
-%if "%{_lib}" == "lib64"
-perl -pi -e "s|-L/usr/lib\b|-L%{_libdir}|g" %{buildroot}%{_libdir}/*.la
-%endif
-
-# cleanup
-rm -f %{buildroot}%{_libdir}/%{name}/apr1.a
+# Dont drop all  .la files, as OpenLDAP uses them for loading plugins
+rm -f %{buildroot}/%{_libdir}/*.la
+rm -f %{buildroot}%{_libdir}/%{name}/*.a
 
 %clean 
 [ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
-#rm -rf %{_builddir}/%{name}-%{version}
+#rm -rf $RPM_BUILD_DIR/%{name}-%{version}
 
 
 %pre servers
@@ -1313,10 +1314,10 @@ fi
 #%dir %{_sysconfdir}/%{name}/slapd.d
 #%attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/ssl/openldap/ldap.pem
 %attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/%{name}/slapd.conf
+%attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/%{name}/slapd.ldif
 %dir %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d
 %attr(640,root,ldap) %{_sysconfdir}/%{name}/DB_CONFIG.example
 %attr(640,root,ldap) %config %{_sysconfdir}/%{name}/slapd.access.conf
-%attr(640,root,ldap) %config %{_sysconfdir}/%{name}/slapd.ldif
 
 #dir %{_sysconfdir}/ssl/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/schema/*.schema
@@ -1388,7 +1389,6 @@ fi
 %defattr(-,root,root)
 %{_bindir}/ldap*
 %{_mandir}/man1/*
-#%{_mandir}/man5/ud.conf.5*
 
 %files -n %libname
 %defattr(-,root,root)
@@ -1398,7 +1398,6 @@ fi
 %files -n %libname-devel
 %defattr(-,root,root)
 %{_libdir}/libl*.so
-%{_libdir}/libl*.la
 %{_includedir}/l*.h
 %{_includedir}/s*.h
 %{_includedir}/%{name}
@@ -1406,7 +1405,7 @@ fi
 
 %files -n %libname-static-devel
 %defattr(-,root,root)
-%{_libdir}/*.a
+%{_libdir}/lib*.a
 
 %if %build_modpacks
 %files back_dnssrv
@@ -1433,7 +1432,6 @@ fi
 %defattr(-,root,root)
 %dir %{_libdir}/%{name}
 %{_libdir}/%{name}/back_sql.la
-%{_libdir}/%{name}/back_sql.a
 %{_libdir}/%{name}/back_sql*.so.*
 %{_libdir}/%{name}/back_sql*.so
 %endif
