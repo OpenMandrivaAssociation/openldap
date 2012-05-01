@@ -2,7 +2,7 @@
 %define _build_pkgcheck_srpm %{nil}
 
 %define pkg_name	openldap
-%define version	2.4.29
+%define version	2.4.31
 %define rel 1
 %global	beta %{nil}
 
@@ -272,10 +272,6 @@ Patch54: MigrationTools-40-preserveldif.patch
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
-
-# http://www.openldap.org/its/index.cgi/Software%20Bugs?id=7162;page=3
-Patch300:	openldap-2.4.29-fix-test054.patch
-
 
 %{?_with_cyrussasl:BuildRequires: 	%{?!notmdk:libsasl-devel}%{?notmdk:cyrus-sasl-devel}}
 %{?_with_kerberos:BuildRequires:	krb5-devel}
@@ -564,7 +560,6 @@ mv tests/scripts/{,broken}test049*
 
 %patch5 -p1
 %patch6 -p1
-%patch300 -p1
 chmod a+rx tests/scripts/test054*
 #aclocal
 #perl -pi -e 's/^(AC_PREREQ.2.5)/${1}7/g' configure.in
