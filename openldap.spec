@@ -776,6 +776,7 @@ make -C tests %{!?tests:test}%{?tests:%tests}
 #disable icecream:
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 export DONT_GPRINTIFY=1
+export DONT_REMOVE_LIBTOOL_FILES=1
 for i in acl addpartial allop allowed autogroup \
 %if %mdkversion >= 201010
  kinit \
