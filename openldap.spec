@@ -1,5 +1,5 @@
 %define pkg_name	openldap
-%define version	2.4.28
+%define version	2.4.29
 %define rel 1
 %global	beta %{nil}
 
@@ -137,9 +137,9 @@
 
 %global clientbin	ldapadd,ldapcompare,ldapdelete,ldapmodify,ldapmodrdn,ldappasswd,ldapsearch,ldapwhoami,ldapexop
 %if %db_internal
-%global serverbin	slapd_db_archive,slapd_db_checkpoint,slapd_db_deadlock,slapd_db_dump,slapd_db_load,slapd_db_printlog,slapd_db_recover,slapd_db_stat,slapd_db_upgrade,slapd_db_verify,slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester
+%global serverbin	slapd_db_archive,slapd_db_checkpoint,slapd_db_deadlock,slapd_db_dump,slapd_db_load,slapd_db_printlog,slapd_db_recover,slapd_db_stat,slapd_db_upgrade,slapd_db_verify,slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester,ldif-filter
 %else
-%global serverbin	slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester
+%global serverbin	slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester,ldif-filter
 %endif
 %define serversbin	slapadd,slapcat,slapd,slapdn,slapindex,slappasswd,slaptest,slurpd,slapacl,slapauth
 
@@ -269,6 +269,9 @@ Patch54: MigrationTools-40-preserveldif.patch
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
+
+# http://www.openldap.org/its/index.cgi/Software%20Bugs?id=7162;page=3
+Patch300:	openldap-2.4.29-fix-test054.patch
 
 
 %{?_with_cyrussasl:BuildRequires: 	%{?!notmdk:libsasl-devel}%{?notmdk:cyrus-sasl-devel}}
@@ -558,6 +561,7 @@ mv tests/scripts/{,broken}test049*
 
 %patch5 -p1
 %patch6 -p1
+%patch300 -p1
 chmod a+rx tests/scripts/test054*
 #aclocal
 #perl -pi -e 's/^(AC_PREREQ.2.5)/${1}7/g' configure.in
@@ -864,7 +868,7 @@ ln -s %{_datadir}/%{name}/schema %{buildroot}/%{_datadir}/%{name}/tests
 find %{buildroot}/%{_datadir}/%{name}/tests -type f -name '*.conf' -exec perl -pi -e 's,\.\.\/servers\/slapd\/back-.*,%{_libdir}/%{name},g;s,\.\.\/servers\/slapd\/overlays,%{_libdir}/%{name},g' {} \;
 perl -pi -e 's,(\`pwd\`\/)?\.\.\/servers\/(slapd|slurpd)\/(slapd|slurpd),%{_sbindir}/${2}%{ol_major},g;s,^PROGDIR=.*,PROGDIR=%{_bindir},g;s,^CLIENTDIR=.*,CLIENTDIR=%{_bindir},g;s,^TESTDIR=.*,TESTDIR=\${USER_TESTDIR-\$TMPDIR/openldap-testrun},g;s/ldap(search|add|delete|modify|whoami|compare|passwd|modrdn|exop)/ldap${1}%{ol_major}/g;s/slapd-tester$/slapd-tester%{ol_major}/g;s,\$TESTWD\/,,g;s/^(\.\*.*)\$(.*)/${1}\`pwd\`\/\$${2}/g' %{buildroot}/%{_datadir}/%{name}/tests/scripts/defines.sh %{buildroot}/%{_datadir}/%{name}/tests/run
 perl -pi -e 's/testrun/\$TESTDIR/g;s,^SHTOOL=.*,. scripts/defines.sh,g' %{buildroot}/%{_datadir}/%{name}/tests/scripts/all
-perl -p -i.bak -e 's,^olcModulePath: .*,olcModulePath: %{_libdir}/%{name},g' %{buildroot}/%{_datadir}/%{name}/tests/scripts/test050-syncrepl-multimaster %{buildroot}/%{_datadir}/%{name}/tests/scripts/test052-memberof
+perl -p -i.bak -e 's,^olcModulePath: .*,olcModulePath: %{_libdir}/%{name},g' %{buildroot}/%{_datadir}/%{name}/tests/scripts/test*
 perl -pi -e 's/^(Makefile|SUBDIRS)/#$1/g' %{buildroot}/%{_datadir}/%{name}/tests/Makefile
 echo 'SHTOOL="./scripts/shtool"' >> %{buildroot}/%{_datadir}/%{name}/tests/scripts/defines.sh
 install -m755 build/shtool %{buildroot}/%{_datadir}/%{name}/tests/scripts
@@ -875,7 +879,7 @@ done
 fi
 ln -s %{_datadir}/%{name}/tests/data %{buildroot}/%{_datadir}/%{name}/tests/testdata
 
-install -m755 tests/progs/.libs/slapd-* %{buildroot}/%{_bindir}
+install -m755 tests/progs/.libs/slapd-* tests/progs/.libs/ldif-filter %{buildroot}/%{_bindir}
 
 ### some hack
 perl -pi -e "s| -L../liblber/.libs||g" %{buildroot}%{_libdir}/libldap.la
@@ -1443,8 +1447,7 @@ fi
 %files testprogs
 %defattr(-,root,root)
 %{_bindir}/slapd-*
+%{_bindir}/ldif-filter%{ol_major}
 #
 # Todo:
 # - add cron-job to remove transaction logs (bdb)
-
-
