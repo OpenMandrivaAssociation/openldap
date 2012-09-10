@@ -2,7 +2,7 @@
 %define _build_pkgcheck_srpm %{nil}
 
 %define pkg_name	openldap
-%define version	2.4.31
+%define version	2.4.32
 %define rel 1
 %global	beta %{nil}
 
