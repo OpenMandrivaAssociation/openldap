@@ -66,46 +66,35 @@
 # excepted for very old systems, where we use bundled db
 %define dbutils db4-utils
 %define dbutilsprefix db_
-%define bundled_db_source_ver 4.8.30
+%define bundled_db_source_ver 5.1.29
 %define dbdevel db-devel
 %if %mdkversion > 201020
-    %global db_internal 0
+    %global db_internal 1
     %define dbver 5.1.25
     %define dbutils db-utils
     %define dbutilsprefix db51_
 %endif
 
 %if %mdkversion <= 201020
-    %global db_internal 0
-    %define dbver 4.8.26
-%endif
-
-%if %mdkversion <= 201000
-    %global db_internal 0
-    %define dbver 4.7.25
-%endif
-
-%if %mdkversion == 200900
-    %global db_internal 0
-    %define dbver 4.6.21
-%endif
-
-%if %mdkversion == 200810
-    %global db_internal 0
-    %define dbver 4.6.21
-%endif
-
-%if %mdkversion <= 200800
     %global db_internal 1
+    #define dbver 4.8.26
 %endif
 
 %if %{?mgaversion:1}%{?!mgaversion:0}
-%if %mgaversion > 1
+%if %mgaversion >= 3
+        %define dbutils db53-utils
+        %define dbver 5.3.21
+        %define dbutilsprefix db53_
+        %define dbdevel db5-devel
+%endif
+%if %mgaversion <= 2
 	%define dbutils db51-utils
         %define dbver 5.1.25
 	%define dbutilsprefix db51_
         %define dbdevel db5-devel
-%else
+        %global db_internal 1
+%endif
+%if %mgaversion <= 1
 	%define dbutils db51-utils
         %define dbver 5.1.19
 	%define dbutilsprefix db51_
@@ -253,7 +242,6 @@ Patch47: 	openldap-2.4.12-change-dyngroup-schema.patch
 # http://qa.mandriva.com/show_bug.cgi?id=15499
 Patch48:	MigrationTools-45-structural.patch
 
-Patch200:	db-4.7.25-fix-format-errors.patch
 # Upstream bdb patches
 
 # http://www.oracle.com/technology/software/products/berkeley-db/db/
@@ -473,7 +461,7 @@ The sql database backend module for OpenLDAP daemon
 
 %package doc
 Summary: 	OpenLDAP documentation and administration guide
-Group: 		Books/Computer books
+Group: 		Documentation
 Requires: 	openldap
 Provides:	openldap-guide
 Obsoletes:	openldap-guide
@@ -508,7 +496,6 @@ also be useful as load generators etc.
 %setup -q -n %{pkg_name}-%{version}%{beta} %{?_with_migration:-a 11} -a 30 
 pushd db-%{dbver} >/dev/null
 
-%patch200 -p1
 # upstream bdb patches
 
 #(cd dist && ./s_config)
@@ -615,13 +602,15 @@ make
 rm -Rf $dbdir
 mkdir -p $dbdir
 make DESTDIR=$dbdir install
-ln -sf ${dbdir}/%{_libdir}/libslapd%{ol_suffix}_db-%{dbname}.so ${dbdir}/%{_libdir}/libdb-%{dbname}.so
+ln -sf ${dbdir}%{_libdir}/libslapd%{ol_suffix}_db-%{dbname}.so ${dbdir}/%{_libdir}/libdb-%{dbname}.so
 chmod u+w ${dbdir}/usr/include/db.h
 grep __lock_ db_int_def.h >> ${dbdir}/usr/include/db.h
 popd
-export CPPFLAGS="-I${dbdir}/%{_includedir} $CPPFLAGS"
-export LDFLAGS="-L${dbdir}/%{_libdir} $LDFLAGS"
-export LD_LIBRARY_PATH="${dbdir}/%{_libdir}"
+export CPPFLAGS="-I${dbdir}%{_includedir} $CPPFLAGS"
+#export LDFLAGS="-L${dbdir}/%{_libdir} $LDFLAGS"
+#default LDFLAGS will be added, and having some options twice breaks build
+export LDFLAGS="-L${dbdir}%{_libdir}"
+export LD_LIBRARY_PATH="${dbdir}%{_libdir}"
 %endif
 
 unset CONFIGURE_TOP
@@ -763,7 +752,7 @@ popd
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 %if %db_internal
 dbdir=`pwd`/db-instroot
-export LD_LIBRARY_PATH="${dbdir}/%{_libdir}"
+export LD_LIBRARY_PATH="${dbdir}%{_libdir}"
 %endif
 # meta test seems to timeout on the Mandriva cluster:
 #export TEST_META=no
@@ -797,7 +786,10 @@ rm -Rf %{buildroot}
 %if %db_internal
 pushd db-%{dbver}/build_unix
 %makeinstall_std STRIP="/bin/true"
+# bash bug? globs not expanding with -e
+set +e
 for i in %{buildroot}/%{_bindir}/db_*;do mv $i ${i/db_/slapd_db_};done
+set -e
 popd
 # For contrib tests
 export LD_LIBRARY_PATH=%{buildroot}/%{_libdir}
@@ -1062,7 +1054,7 @@ MIGRATE=`%{_sbindir}/slapd%{ol_major} -VV 2>&1|while read a b c d e;do case $d i
 if [ "$1" -ne 1 -a -e "$SLAPDCONF" -a "$MIGRATE" != "nomigrate" ]
 then 
 #`awk '/^[:space:]*directory[:space:]*\w*/ {print $2}' /etc/%{name}/slapd.conf`
-dbs=`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2;suf="";dir=""}; /^[:space:]*suffix[:space:]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[:space:]*directory[:space:]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
 do
 	dbdir=${db/:*/}
@@ -1105,7 +1097,7 @@ LDAPGROUP=ldap
 SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
 if [ -e "$SLAPDCONF" ] 
 then
-dbs=`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2;suf="";dir=""}; /^[:space:]*suffix[:space:]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[:space:]*directory[:space:]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
 do	
 	dbdir=${db/:*/}
@@ -1450,3 +1442,838 @@ fi
 #
 # Todo:
 # - add cron-job to remove transaction logs (bdb)
+
+
+
+
+%changelog
+
+* Mon Oct 15 2012 buchan <buchan> 2.4.33-1.mga3
++ Revision: 306387
+- Comply with new group policy (doc package moves to Documentation group)
+- New version 2.4.33
+- Build an internal copy of db-5.1.29 on any distro that doesnt have it or newer
+- Fix building with db_internal on current distros
+
+* Fri Aug 17 2012 buchan <buchan> 2.4.32-1.mga3
++ Revision: 281766
+- New version 2.4.32
+
+* Tue Jul 31 2012 fwang <fwang> 2.4.31-5.mga3
++ Revision: 276317
+- rebuild for db-5.3
+
+* Wed Jul 25 2012 fwang <fwang> 2.4.31-4.mga3
++ Revision: 274166
+- rebuild for new db5.2
+
+* Fri Jul 20 2012 fwang <fwang> 2.4.31-3.mga3
++ Revision: 272764
+- we are using db 5.2 now
+
+* Fri Jul 20 2012 fwang <fwang> 2.4.31-2.mga3
++ Revision: 272746
+- rebuild for new db 51
+
+  + buchan <buchan>
+    - Fix awk space pattern in pre/post scripts (back-config case should be considered)
+
+* Thu Jun 21 2012 buchan <buchan> 2.4.31-1.mga3
++ Revision: 262497
+- New version 2.4.31
+- Merge some changes from/for Mandriva
+
+* Sun Apr 29 2012 sander85 <sander85> 2.4.29-2.mga2
++ Revision: 234266
+- try to fix build
+
+  + dlucio <dlucio>
+    - fix #5605
+
+* Thu Feb 16 2012 buchan <buchan> 2.4.29-1.mga2
++ Revision: 209792
+- New version 2.4.29
+- rediff patches (contrib make files, test001 adding slapcat check)
+- Fix packaged test suite (by fixing olcModulePath in all tests, shipping ldif-filter)
+- Fix default config for split cert/key as generated by rpm-helper (bug #1978)
+-Update gencert to have similar behaviour, in case rpm-helper is not available
+
+* Tue Dec 20 2011 buchan <buchan> 2.4.28-1.mga2
++ Revision: 184844
+- Rest of BR on db5-devel only on Mageia > 1
+- On Mageia > 1 only, BR db5-devel
+- 2.4.28
+- Fix errors from 'service ldap recover' etc. due to versioned binaries in db51-utils
+- Revert dropping all libtool archive files, OpenLDAP uses them to load plugins.
+  Instead, only drop the shared library libtool archive files.
+- Revert wrong db5 br that will break builds on other distros
+- Update contrib makefile patch for apr1
+
+* Thu Dec 08 2011 fwang <fwang> 2.4.26-3.mga2
++ Revision: 178879
+- rebuild for new odbc
+
+* Tue Nov 22 2011 fwang <fwang> 2.4.26-2.mga2
++ Revision: 170841
+- br db 5
+- drop .la files
+- fix req on db-utils
+- br db5
+- rebuild against db4.8
+
+  + buchan <buchan>
+    - Revert mdv r675900, 'make openldap less restrictibe requiring db', it can break upgrades
+    - Add a description of why we have an exact version dependency
+    - Sync with Mdv 2.4.26-1
+    - Hopefully fix db dependencies correctly for all mageia releases
+
+* Wed Apr 20 2011 pterjan <pterjan> 2.4.25-1.mga1
++ Revision: 88923
+- Update to 2.4.25
+- Sync with mdv
+
+* Mon Jan 17 2011 pterjan <pterjan> 2.4.23-4.mga1
++ Revision: 21712
+- Define a fake mdkversion
+
+  + spuhler <spuhler>
+    - imported package openldap
+
+
+* Thu Dec 02 2010 Buchan Milne <bgmilne@mandriva.org> 2.4.23-4mdv2011.0
++ Revision: 604757
+- Fix dependencies for db-5.x (s/db4/db/g)
+
+* Thu Nov 25 2010 Buchan Milne <bgmilne@mandriva.org> 2.4.23-3mdv2011.0
++ Revision: 601162
+- Allow db5.1
+
+* Thu Nov 25 2010 Buchan Milne <bgmilne@mandriva.org> 2.4.23-2mdv2011.0
++ Revision: 601144
+- Improve default client SSL settings
+  Bundle the correct Berkeley DB copy, but build against 4.8.26 for 2010.1
+  Try and correct some nssov issues, but disabled for now as it is still broken
+
+  + Funda Wang <fwang@mandriva.org>
+    - update dbver
+
+  + Oden Eriksson <oeriksson@mandriva.com>
+    - 2.4.23
+    - drop P7, it's added upstream
+
+* Wed Apr 28 2010 Christophe Fergeau <cfergeau@mandriva.com> 2.4.22-2mdv2010.1
++ Revision: 540359
+- rebuild so that shared libraries are properly stripped again
+
+* Tue Apr 27 2010 Buchan Milne <bgmilne@mandriva.org> 2.4.22-1mdv2010.1
++ Revision: 539539
+- Add patch from head fixing proxy control propagation (r1.259 in back-ldap/bind.c)
+- clean some rpm-helper deps
+- New version 2.4.22
+- Re-enable nssov by default without any nss-ldapd hacks
+- Tighten schema requires to avoid errors in pre
+- Ensure group is added even if private groups are not enabled (Eugeni)
+
+* Tue Apr 06 2010 Funda Wang <fwang@mandriva.org> 2.4.21-5mdv2010.1
++ Revision: 531957
+- rebuild for new openssl
+
+  + Oden Eriksson <oeriksson@mandriva.com>
+    - rebuilt against openssl-0.9.8m
+
+  + Guillaume Rousse <guillomovitch@mandriva.org>
+    - adapt to new %%_post_syslogadd behaviour
+
+* Wed Dec 30 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.21-2mdv2010.1
++ Revision: 483941
+- Update to db-4.8.26
+
+* Tue Dec 29 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.21-1mdv2010.1
++ Revision: 483295
+- New version 2.4.21
+- init script fixes for SSL with back-config (Leo Bergolth)
+- Try harder to use db4.8 by default
+
+* Sun Nov 29 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.20-1mdv2010.1
++ Revision: 471347
+- New version 2.4.20
+- Switch to db4.8
+- Use syslog helper macro if available
+- Use SSL cert helper macro if available
+- Move SSL certs from /etc/ssl/openldap to /etc/pki/tls/private
+
+* Tue Nov 24 2009 Frederik Himpe <fhimpe@mandriva.org> 2.4.19-3mdv2010.1
++ Revision: 469777
+- Add support for rsyslog
+
+* Mon Oct 12 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.19-2mdv2010.0
++ Revision: 456810
+- Use a pseudo-random base port for tests
+- Use a newer killproc options (delay, pid file) if available, and fall back to an
+ internal version that is new enough if not
+
+* Tue Oct 06 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.19-1mdv2010.0
++ Revision: 454919
+- New version 2.4.19
+
+* Mon Sep 07 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.18-1mdv2010.0
++ Revision: 432771
+- New version 2.4.18
+- rediff patches for fuzz
+- Require new enough openldap-mandriva-dit to avoid missing schema that were in
+ openldap-servers before
+- Run tests on all backends available, not just bdb
+- Update to db 4.7.25.4 (for build with internal copy)
+
+* Sun Jul 19 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.17-2mdv2010.0
++ Revision: 397917
+- Migrate the rest of the non-core schema out
+
+* Sun Jul 19 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.17-1mdv2010.0
++ Revision: 397474
+- New version 2.4.17
+- Remove schema files that are shipped in openldap-extra-schemas
+- Require openldap-extra-schemas
+
+* Wed Jun 24 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.16-2mdv2010.0
++ Revision: 388877
+- Always run recovery on upgrade, to smoothly handle database library upgrades
+
+* Mon Apr 06 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.16-1mdv2009.1
++ Revision: 364349
+- New version 2.4.16
+
+* Tue Feb 24 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.15-1mdv2009.1
++ Revision: 344541
+- update to new version 2.4.15
+
+* Mon Feb 16 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.14-1mdv2009.1
++ Revision: 340709
+- Fix fuzz
+- New version 2.4.14
+- Drop patches for ITS 5768,5809,5849
+- Add some contrib overlays
+
+* Tue Feb 03 2009 Guillaume Rousse <guillomovitch@mandriva.org> 2.4.13-5mdv2009.1
++ Revision: 337186
+- keep bash completion in its own package
+
+* Thu Jan 29 2009 Funda Wang <fwang@mandriva.org> 2.4.13-4mdv2009.1
++ Revision: 335107
+- rebuild for new libtool
+
+* Thu Jan 15 2009 Guillaume Rousse <guillomovitch@mandriva.org> 2.4.13-3mdv2009.1
++ Revision: 329910
+- use bdb 4.6 on 2008.1 too
+
+* Fri Jan 02 2009 Buchan Milne <bgmilne@mandriva.org> 2.4.13-2mdv2009.1
++ Revision: 323305
+- Disable direct gssapi support for now (though we need to find a way to enable it
+  again (should fix bug #46573)
+- Build against db4.6 by default on 2009.0 (but still ship 4.7 source)
+- Tighten up db4-util requires
+
+* Sat Dec 13 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.13-1mdv2009.1
++ Revision: 313955
+- New version 2.4.13
+- Switch to db4.7
+- Drop ITS patches upstreamed
+- ITS #5768 Fixed libldap_r deref building
+- ITS #5809 Fixed slapd syncrepl rename handling
+- ITS #5849 Fixed libldap peer cert memory leak
+
+* Wed Nov 05 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.12-5mdv2009.1
++ Revision: 300112
+- Fix for ITS #5745 slapcat fails and doesn't return correct error status for bdb fatal error
+- Fix for ITS #5709 slapd sync provider skips some objects
+- Fix for ITS #5698 slapd crashes after trying to add an invalid database entry
+- Fix for ITS #5766 smbkrb5 overlay doesn't honour kerberos principal expiration
+- Include current db4.6 patches for build against internal copy
+
+* Fri Oct 17 2008 Guillaume Rousse <guillomovitch@mandriva.org> 2.4.12-4mdv2009.1
++ Revision: 294614
+- modify dyngroup.schema so as to use autogroup overlay
+
+* Tue Oct 14 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.12-3mdv2009.1
++ Revision: 293664
+- New version 2.4.12
+
+* Mon Sep 15 2008 Guillaume Rousse <guillomovitch@mandriva.org> 2.4.11-3mdv2009.0
++ Revision: 284964
+- devel packages requires libwrap-devel
+
+* Wed Jul 23 2008 Guillaume Rousse <guillomovitch@mandriva.org> 2.4.11-2mdv2009.0
++ Revision: 242559
+- patch5: ensure libs are installed with executable bit set, so as to have debug symbols included indebug package
+
+* Fri Jul 18 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.11-1mdv2009.0
++ Revision: 238145
+- New version 2.4.11
+
+* Wed Jul 16 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.10-3mdv2009.0
++ Revision: 236365
+- Initial support for back-config configurations in init script
+
+* Tue Jul 15 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.10-2mdv2009.0
++ Revision: 236103
+- ITS #5580 (CVS-2008-2952 / MDVSA-2008:144)
+- Alternative fix for ITS #5569
+- Bump release
+- Add patch for ITS #5569 (smbk5pwd interferes with ppolicy)
+
+* Wed Jun 11 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.10-1mdv2009.0
++ Revision: 218095
+- New version 2.4.10
+  Fix smbpwd overlay symlinks
+  Avoid stripping binaries at install time to get usable debug packages
+
+* Mon Jun 09 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.9-2mdv2009.0
++ Revision: 217233
+- Workaround struct ucred glibc 2.8 issue
+  Fix overlinking/underliking for contrib overlays
+- Maintain backportability
+
+  + Pixel <pixel@mandriva.com>
+    - do not call ldconfig in %%post/%%postun, it is now handled by filetriggers
+
+* Thu May 08 2008 Oden Eriksson <oeriksson@mandriva.com> 2.4.9-1mdv2009.0
++ Revision: 204515
+- 2.4.9
+- added P200 (db46-update-4.6.21.1.diff) from the db46 package for completeness
+
+* Sun Mar 23 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.8-2mdv2008.1
++ Revision: 189682
+- Ship slapd headers in devel package to allow out-of-tree module compilation
+ (Guillaume Rousse)
+- Ship addpartial and autogroup overlays
+- Ship smbk5pwd overlay without heimdal support as smbpwd to not conflict
+  with heimdal-enabled smbk5pwd overlay from openldap-smbk5pwd package
+- Drop explicit perl-MIME-Base64 dependency in migration subpackage
+- Ship the allop overlay from contrib/ (Guillaume Rousse)
+  Avoid conflicting with other openldap packages, and make bash completion work
+  for non-system case
+
+* Mon Feb 25 2008 Buchan Milne <bgmilne@mandriva.org> 2.4.8-1mdv2008.1
++ Revision: 174893
+- Drop patches which are no longer required
+- rediff ntlm patch
+- Always ship db4 source, so srpm rebuilds more easily on older distros
+- New version 2.4.8
+- Rework backend options (so new backends will be enabled as modules by default)
+
+  + Thierry Vignaud <tv@mandriva.org>
+    - fix description-line-too-long
+
+  + Guillaume Rousse <guillomovitch@mandriva.org>
+    - fix bash completion
+
+  + Olivier Blin <oblin@mandriva.com>
+    - restore BuildRoot
+
+* Fri Dec 21 2007 Oden Eriksson <oeriksson@mandriva.com> 2.4.7-4mdv2008.1
++ Revision: 136101
+- fix krb5-devel <-> openldap-devel cross linkage (take one)
+
+* Fri Dec 21 2007 Oden Eriksson <oeriksson@mandriva.com> 2.4.7-3mdv2008.1
++ Revision: 136062
+- really build system (silly bs bug...)
+- added db-4.6.21.tar.gz
+- 2.4.7
+
+  + Thierry Vignaud <tv@mandriva.org>
+    - kill re-definition of %%buildroot on Pixel's request
+
+* Sun Dec 09 2007 Guillaume Rousse <guillomovitch@mandriva.org> 2.3.39-5mdv2008.1
++ Revision: 116780
+- use correct source file for bash completion
+
+* Sat Dec 08 2007 Guillaume Rousse <guillomovitch@mandriva.org> 2.3.39-4mdv2008.1
++ Revision: 116519
+- bash completion
+
+* Wed Dec 05 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.39-3mdv2008.1
++ Revision: 115711
+- Add fix for slapadd hang when not using quick mode (-q)
+
+* Wed Nov 07 2007 Guillaume Rousse <guillomovitch@mandriva.org> 2.3.39-2mdv2008.1
++ Revision: 106742
+- rebuild
+
+* Mon Oct 29 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.39-1mdv2008.1
++ Revision: 103016
+- New version 2.3.39
+- Drop ITS4873 patch, applied upstream
+- Optional support (--with heimdal) for changing Heimdal passwords in smbk5pwd
+
+* Tue Sep 18 2007 Anssi Hannula <anssi@mandriva.org> 2.3.38-3mdv2008.0
++ Revision: 89723
+- rebuild due to package loss
+
+  + Andreas Hasenack <andreas@mandriva.com>
+    - fix indentation error in sudo.schema
+
+* Thu Aug 23 2007 Thierry Vignaud <tv@mandriva.org> 2.3.38-2mdv2008.0
++ Revision: 69740
+- fileutils, sh-utils & textutils have been obsoleted by coreutils a long time ago
+
+* Wed Aug 22 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.38-1mdv2008.0
++ Revision: 69115
+- New version 2.3.38
+- Fix program names in test scripts in non-system case
+
+* Thu Aug 16 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.37-1mdv2008.0
++ Revision: 64124
+- Double the size of the SRPM by always shipping db4 source (to avoid build system
+  problems)
+- New version 2.3.37
+-Update URLs for Berkeley DB
+-Add 4.2.52.5 patch from upstream
+-Add Howards cache memory leak fix
+-Fix building with internal db4 (and activate it for anything without the above
+ patches)
+
+  + Andreas Hasenack <andreas@mandriva.com>
+    - updated dhcp schema from version 3.0.5 of the dhcp patch
+
+* Fri Jun 22 2007 Andreas Hasenack <andreas@mandriva.com> 2.3.36-1mdv2008.0
++ Revision: 43205
+- use better rpm group for test packages
+
+  + Buchan Milne <bgmilne@mandriva.org>
+    - New version 2.3.36
+
+* Fri Jun 01 2007 Oden Eriksson <oeriksson@mandriva.com> 2.3.35-2mdv2008.0
++ Revision: 33634
+- rebuilt due to fixed initscript
+- make sure slurpd is shut down
+
+* Sun Apr 22 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.35-1mdv2008.0
++ Revision: 17103
+- New version 2.3.35
+- Patches from CVS:
+  - Fixed slapd-bdb no-op crasher (ITS#4925)
+  - Fixed libldap response code handling on rebind (ITS#4924)
+
+
+* Fri Mar 23 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.34-5mdv2007.1
++ Revision: 148682
+- Fix syslog facility selection with new default syslog.conf (Bug #29687)
+
+* Fri Mar 16 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.34-4mdv2007.1
++ Revision: 144974
+- Last fixes for test suite
+
+* Thu Mar 15 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.34-3mdv2007.1
++ Revision: 144262
+- ITS #4873 - user contributed fix for ACL set memory leak
+- fix up syslog configuration in postinstall a bit
+
+* Tue Mar 13 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.34-2mdv2007.1
++ Revision: 143193
+- Fix some missing system vs non-system issues
+- Apply patch derived from my changes to HEAD for tests not writing to the test
+  dir
+- ITS #4854 - Fixed str2anlist handling of undefined attrs/OCs (segfault)
+- ITS #4851 - Fixed slapd-bdb/hdb startup with missing shm env
+- ITS #4853 - Fixed slapo-refint config message
+- ITS #4855 - Fixed libldap_r tpool reset
+- Ship the test suite in a working condition
+
+* Sat Feb 17 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.34-1mdv2007.1
++ Revision: 122184
+- New version 2.3.34
+- Drop link-ltdl-before-odbc patch (applied upstream)
+- reenable meta-concurrency test as it doesnt chase referrals anymore
+  (according to hyc)
+- New version 2.3.33
+- Fix issue with back-meta not working (by linking to ltdl before odbc)
+
+* Fri Jan 05 2007 Buchan Milne <bgmilne@mandriva.org> 2.3.32-1mdv2007.1
++ Revision: 104331
+-New version 2.3.32
+-Post-2.3.31 fixes:
+- ACL set memory leak(#4780)
+- syncrepl shutdown hang (#4790)
+- values return filter control leak(ITS#4794)
+- Debug typo (ITS#4784)
+-Add additional password modules from contrib (pw-netscape tested and working)
+-Add acl-posixgroup from contrib (not tested yet)
+
+* Wed Dec 20 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.31-1mdv2007.1
++ Revision: 100520
+-New version 2.3.31
+-ACL set memory leak patch from HEAD (ITS#4780)
+- revert unnecessary libification of unixODBC-devel buildrequire
+
+* Tue Nov 14 2006 Andreas Hasenack <andreas@mandriva.com> 2.3.30-1mdv2007.1
++ Revision: 84112
+- fixed odbc buildrequires
+- updated to verison 2.3.30
+
+* Sat Nov 11 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.29-1mdv2007.0
++ Revision: 81603
+- new version 2.3.29
+
+  + Andreas Hasenack <andreas@mandriva.com>
+    - we don't necessarily have libsasl-devel installed on the host that
+      builds the .src.rpm or parses it (-q --specfile ...)
+    - updated to version 2.3.28
+
+* Thu Aug 24 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.27-1mdv2007.0
++ Revision: 57726
+- New version 2.3.27
+- Import openldap
+
+* Wed Aug 16 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.25-1mdv2007.0
+- 2.3.25
+- init script: use subsys file named after process (fixes status), 
+  fix status check in recover
+
+* Thu Jul 13 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.24-3mdv2007.0
+- include patch for ITS4589
+- dont use wildcards in files list (some old versions of rpm dont like that)
+
+* Wed Jul 12 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.24-2mdv2007.0
+- apply file size limits during start (set in /etc/sysconfig/ldap)
+- fix modulepath in slapd.conf on biarch platforms (#23400)
+- put the ldapi socket in a more sensible place, /var/run/ldap/ldapi (#22420)
+- use slapd -VV, not slapd -V (which starts slapd too) for version check,
+  fixes #19245.
+- allow setting the maximum file descriptor limit in slapd at compile time,
+  use --define 'openldap_fd_setsize 8192' or similar.
+- update samba.schema
+
+* Wed Jun 07 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.24-1mdv2007.0
+- New release 2.3.24
+- only disable linuxthreads check on cooker
+- update ldap-hot-db-backup to remove old archived transaction logs (after
+  7 days by default)
+- install cron symlinks for ldap-hot-db-backup, and adjust it for this
+- fix ppolicy issues (ITS4576)
+
+* Fri May 19 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.23-1mdk
+- New release 2.3.23
+
+* Wed May 03 2006 Buchan Milne <bgmilne@mandriva.org> 3.2.21-2mdk
+- add patches for ITSs 4499, 4500, 4503, 4504, 4512, 4513, and a slurpd 
+  potential overflow from Quanahs page
+
+* Fri Apr 28 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.21-1mdk
+- New release 2.3.21
+- merge fixes from CS4 branch:
+  - added patch to fix password policy control value
+  - enabled spasswd (fixes #21753)
+  - added indexes for syncprov replication
+  - updated samba schema file with what is provided in samba 3.0.21c
+  - added sample index line for when using syncprov
+  - fixed #21066 (limits must be in database section)
+- fix ldap-common to only consider bdb and hdb (not ldbm)
+
+* Mon Feb 20 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.20-1mdk
+- New release 2.3.20
+
+* Thu Jan 26 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.19-1mdk
+- New release 2.3.19
+
+* Wed Jan 18 2006 Buchan Milne <bgmilne@mandriva.org> 2.3.18-1mdk
+- New release 2.3.18
+
+* Mon Jan 09 2006 Olivier Blin <oblin@mandriva.com> 2.3.13-3mdk
+- convert parallel init to LSB
+
+* Mon Jan 02 2006 Olivier Blin <oblin@mandriva.com> 2.3.13-2mdk
+- parallel init support
+
+* Thu Dec 01 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.13-1mdk
+- 2.3.13
+- run recovery by default again
+- disable meta-concurrency test for now
+
+* Tue Nov 22 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.12-1mdk
+- 2.3.12
+- no-transaction patch no longer necessary, drop db-4.2.52-6mdk requirement
+- drop patches from cvs
+- fix quoting of urls in init script (#19911)
+
+* Sun Nov 13 2005 Oden Eriksson <oeriksson@mandriva.com> 2.3.11-7mdk
+- rebuilt against openssl-0.9.8a
+
+* Wed Nov 02 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.11-6mdk
+- ITS 4108 -  thread crash, fix from CVS
+
+* Sat Oct 29 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.11-5mdk
+- fix logrotate (including for non-system case)
+
+* Thu Oct 27 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.11-4mdk
+- fix init script
+
+* Thu Oct 27 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.11-3mdk
+- fix slaptest modification in initscript in non-system case
+
+* Thu Oct 27 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.11-2mdk
+- fixes to scripts (put all backups under one place, handle empty suffix)
+- check configuration file in init script before restarting, and add
+  check option (and force-restart if you really want to kill your slapd)
+
+* Sat Oct 15 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.11-1mdk
+- 2.3.11
+- provide means to build without epoll (--without epoll)
+- drop p100
+
+* Wed Oct 12 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.9-2mdk
+- disable epoll when building for distributions with a 2.4 kernel
+- fix lib require for non-system case
+
+* Tue Oct 11 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.9-1mdk
+- 2.3.9
+- test041 is disabled upstream
+- ITS 4035 - rootdn incorrect in cn=config backend/database (Andreas)
+
+* Fri Oct 07 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.3.8-1mdk
+- New release 2.3.8
+- drop upstream patches (p100-102)
+- openldap (since 2.3.7) includes up-to-date libtool, ensure we keep it on
+  older distros (and no longer patch it in etc)
+- only run tests for bdb backend by default (--define 'tests all' to run all)
+- test041 seems broken
+
+* Wed Sep 28 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.7-1mdk
+- ITS 3989 fix ID used for syncprov_findbase (p100)
+- fix rwm-2.3.so.0: undefined symbol: rewrite_info_init (p101)
+- ITS 4020 slapd dies with empty uniqueMember attributes (p102)
+- fix database dir for build on RH
+
+* Tue Sep 20 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.6-4mdk
+- rework init script so permissions checking (which was only called during 
+  recovery) is done by default again (#16518), and add "recover" option to handle
+  recovery sanely
+
+* Sat Sep 17 2005 Buchan Milne <bgmilne@mandriva.org> 2.3.6-3mdk
+- check slapd version to avoid unnecessary export/import
+- fix typo in previous change to init script
+- add acl for sambaDomain to slapd.access.conf
+- add some more slapd.conf examples (load overlays, limits for syncrepl)
+
+* Thu Sep 15 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.3.6-2mdk
+- hacks for clean building on other/older distros (mdk10.0, fc1->rhel4)
+- fix test for db4_internal case
+- return correct exit codes in init script
+
+* Tue Aug 30 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.3.6-1mdk
+- conflict with kolab with broken template slapd.conf
+
+- Sun Aug 28 2005 Oden Eriksson <oeriksson@mandriva.com>
+  - fixed one %%lib/%%{_lib} error
+  - make the devel sub package conflict with libldap2.2_7-devel
+- Mon Aug 22 2005 Buchan Milne <bgmilne@linux-mandrake.com>
+  - 2.3.6
+  - drop p3 (sent upstream)
+  - use BerkelyDB4.2 patch from source distribution
+  - update docs from CVS, and add Mandriva section (re-used for README.mdk)
+  - test and update migration from previous versions with db migration
+
+* Tue Aug 09 2005 Buchan Milne <bgmilnelinux-mandrake.com> 2.3.4-4mdk
+- fixes from Christiaan Welvaart <cjw@daneel.dyndns.org> allowing building
+  with openldap-devel installed:
+  - use new libtool and autotools
+  - disable parallel make (make depend fails with icecream)
+
+* Wed Aug 03 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.3.4-3mdk
+- fix build with db4.3 run-time library present
+- build with system db4.2 on 2006 and later
+
+* Thu Jul 21 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.3.4-2mdk
+- dont run db_recover in scriptlets or init script, not only is it
+  unnecessary, it can prevent startup
+- update/sync configure options
+- update built-in db4.2 for the db4_internal case (and default to it for now)
+- ship overlays from contrib too (smbk5pwd)
+
+* Wed Jun 22 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.3.4-1mdk
+- 2.3.4
+- drop patches included upstream (p20, p21)
+
+* Wed Jun 22 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.27-2mdk
+- init script fixes
+  - fix ownership of database directories (#16518)
+  - ease translations (inspired by #16491)
+  - factorise use of user to run slurpd and db tools (also in rpm scriptlets)
+  - enable SSL if SLAPDURLLIST is not set and we have certs
+- fixes in preparation for openldap2.3
+  - macro-ize more hardcoded versions
+
+* Sat Jun 18 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.27-1mdk
+- New release 2.2.27
+- drop migration subpackage (which will be packaged seperately)
+- move 'make test' to %%check
+
+* Fri Jun 10 2005 Andreas Hasenack <andreas@mandriva.com> 2.2.24-4mdk
+- added account objectclass to migration tools when EXTENDED_SCHEMA is not
+  being used (#15499)
+- added preserve patch for migrationtools so that the temporary ldif file used
+  during the import is not removed in the event of an error
+
+* Thu Jun 02 2005 Andreas Hasenack <andreas@mandriva.com> 2.2.24-3mdk
+- restart in %%pre and %%post has to deal with locales other than english
+- rebuilt with newer sasl (2.1.22)
+
+* Fri Apr 22 2005 Christiaan Welvaart <cjw@daneel.dyndns.org> 2.2.24-2mdk
+- fix smbk5pwd build:
+  - fix Patch20: use libtool archives in build dir for libldap_r and liblber
+  - build openldap first so these archives are available
+
+* Tue Apr 19 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.24-1mdk
+- 2.2.24
+- update qmail schema (Tibor Pittich)
+- buildconflicts with libdb4.3
+
+* Thu Apr 07 2005 Oden Eriksson <oeriksson@mandrakesoft.com> 2.2.23-5mdk
+- add -fPIC to cflags for librewrite to fix build on amd64
+- fix deps
+
+* Sat Apr 02 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.23-4mdk
+- add conflict for devel package to allow upgrade (#14536)
+- require the version of sasl we built against in post (#15056)
+- dont use attributes in slapd.access.conf that were not available in
+  default schemas before to not break upgrade (#15056)
+- build with modules, but not in seperate packages (fixes upgrade with 
+  module packages installed)
+- handle databases defined in included files (fix upgrade for Kolab)
+- allow disabling of database recovery at startup
+- ship smbk5passwd module from cvs (p20), and make it work right (p21)
+- disable parallel build (breaks building with modules)
+- build against system db4.2 again
+- only backup to ldif once for upgrade
+
+* Mon Feb 07 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.23-3mdk
+- sync slapd.access.conf with version from openldap2.2 package
+- unmark slapd.access.conf as noreplace, and warn the user to this fact
+
+* Fri Feb 04 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.23-2mdk
+- fix typo in migration
+- migrate data only once, even if the first failed
+- fix libtool file fix
+- provide backends when built without module support
+
+* Wed Jan 26 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.23-1mdk
+- 2.2.23
+- fix changelog (from bad merge)
+- version the guide source
+- run make test once
+- fix migration (should migrate all ldbm or bdb database defined in slapd.conf)
+
+* Fri Jan 21 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.20-3mdk
+- buildconflicts with older openldap-devel, so we don't link to parts
+  of it in the devel package
+- be able to disable tests (via --without test)
+- fix typo in Contacts ACL
+- add changelog for distro-specific release
+
+* Wed Jan 05 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.20-2mdk
+- run make test in build
+- build against system db4.2 on 10.1
+
+* Tue Jan 04 2005 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.20-1mdk
+- 2.2.20
+- fix default slurpd replica path when not system ldap (#12745)
+- stop slurpd if it is running, even if we couldn't stop slapd (#12760)
+- allow overriding of replica detection in the init script when starting
+  slurpd, via STARTSLURPD in the sysconfig file (#11552)
+- fix rpmlint summary-ended-with-dot
+- fix requires for -migration
+- build against internal db4.2, otherwise we segfault? (#12759)
+
+* Thu Dec 23 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.19-3mdk
+- really revert to db-4.2 (and enforce it now)
+- fix conflict with system openldap (man pages)
+- don't use attributes/objectclasses from obsolete samba2 schema in 
+  slapd.access.conf
+
+* Wed Dec 15 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.19-2mdk
+- use mkrel (conditionally define it) for distribution specific release tag
+- revert to db-4.2 until Sleepycat bug #11505 is fixed
+- update ntlm patch (p53), and apply it now
+- fix calls to slapd_db* when not system ldap
+- allow build-time setting of system (--with-system)
+- macro-ise db4 libname
+- update docs (finally) and document how to do it
+
+* Mon Nov 29 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.19-1mdk
+- 2.2.19
+- only do hostname-based release maths on i586 for now (and fix it too)
+- drop p55 (final fix in upstream) and p54 (merged upstream)
+- build against system db-4.3 on 10.2 and later
+
+* Tue Nov 16 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.18-3mdk
+- better db4.3 patch (Quanah's)
+- memleak fixes from HEAD (Quanah's)
+- use original samba.schema, samba2 schema is now obsolete (samba2 retired)
+- rename -devel-static to -static-devel
+- don't provide unversioned -develprovides when not system
+
+* Wed Nov 10 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.18-2mdk
+- build with internal db4.3
+- ship db4 patches even if we don't build with internal db4
+
+* Tue Oct 26 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.18-1mdk
+- 2.2.18
+- drop buildconflicts
+- fix last few "parallel install" issues (also fixes #12199)
+- fix build without system db4
+- add distribution-specific release number
+
+* Sat Oct 09 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.17-1mdk
+- 2.2.17
+- allow building as non-system, provision to alternativise (taken from samba)
+  (syslog/logrotate config still needs fixing)
+
+* Mon Aug 23 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.2.15-1mdk
+- 2.2.15
+
+* Mon Aug 02 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.1.29-6mdk
+- slapd.init - only run recovery in start (don't destroy memory cache)
+- rewrite of backup and reinitialise scripts
+- slapd.conf, slapd.access.conf - better default ACLs
+- add ldapns.schema, for migrating host attributes from "account" objectclass
+
+* Fri Jun 18 2004 Jean-Michel Dault <jmdault@mandrakesoft.com> 2.1.29-5mdk
+- change ldap.conf permissions to 644 so anyone can read the file. It's
+  needed so Evolution and others can work.
+- add autoconf2.5 and ed to buildrequires
+- disable posix mutexes, this breaks setups with non-NPTL kernels,
+  low-end processors (VIA, K6, P1), and User-Mode Linux
+- use assembler mutexes whenever possible, since they're the fastest on
+  Linux.
+
+* Wed May 19 2004 Florin <florin@mandrakesoft.com> 2.1.29-4mdk
+- fix the awk lines in the scripts
+
+* Wed May 19 2004 Florin <florin@mandrakesoft.com> 2.1.29-3mdk
+- add the ntlm.patch (required by fcrozat)
+
+* Sat Apr 24 2004 Florin <florin@mandrakesoft.com> 2.1.29-2mdk
+- add the forgotten dhcp.schema
+
+* Sat Apr 03 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.1.29-1mdk
+- 2.1.29 marked as stable
+- drop patch 3
+- add some example scripts for hot database backups / removal of old
+  transaction logs.
+- add schema for evolution, dnszone, sudo, dhcp, drop dns, cron (not valid,
+  and never implemented)
+- update ACLs to allow users to add contacts (ie via Evo).
+
+* Thu Mar 25 2004 Florin <florin@mandrakesoft.com> 2.1.25-6mdk
+- comment out the TLS_CACERT      /etc/ssl/cacert.pem line in ldap.conf
+ the file doesn't exist anyway and it breaks the non TLS behaviour
+
+* Wed Mar 24 2004 Buchan Milne <bgmilne@linux-mandrake.com> 2.1.25-5mdk
+- db4.2.52.2
+- fix replica uri support (patch from CVS/2.1.26/2.1.27)
+- revert to using /etc/openldap/ldap.conf instead of /etc/ldap.conf (#4462)
+- don't ship /var/run/ldap/openldap-slurpd
+- merge fixes from amd64 branch (thanks Gwenole)
+- set TMPDIR in init script to keep kerberos binds working after restart
+  (Denis Havlik)
+- better default slapd.access.conf and ldap.conf (don't require CA-signed certs)
+
