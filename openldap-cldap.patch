@@ -1,0 +1,11 @@
+diff -p -up openldap-2.4.13/servers/slapd/slap.h.cldap openldap-2.4.13/servers/slapd/slap.h
+--- openldap-2.4.13/servers/slapd/slap.h.cldap	2008-11-11 21:51:53.000000000 +0100
++++ openldap-2.4.13/servers/slapd/slap.h	2008-12-13 12:02:21.000000000 +0100
+@@ -33,6 +33,7 @@
+ #include <ac/stdlib.h>
+ 
+ #include <sys/types.h>
++#include <sys/socket.h>
+ #include <ac/syslog.h>
+ #include <ac/regex.h>
+ #include <ac/signal.h>

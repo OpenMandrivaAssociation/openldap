@@ -1,0 +1,23 @@
+sources:
+  "db-5.1.29.tar.gz:"	42dc96c71873c7fde543c916ed866cadee6fa51d
+  "DB_CONFIG:"	514039dab9cbbe8c90899a8d20c056f6ac4b1a3e
+  "gencert.sh:"	0f160d6ee3af005c0f90d5803f5ae0fbbffd1c5a
+  "ldap-common:"	f34986dd4190540e7f7ccc508ae120a8160a2430
+  "ldap.conf:"	6e6a8d468b99c7c072a2c47a3d5faedeed940352
+  "ldap-hot-db-backup:"	90757302dbcbf83b977dea8a2b800bbad41510cf
+  "ldap.init:"	11eafaff070d8ffca7c8da0789ffb36e51ce8cad
+  "ldap.logrotate:"	a96e5186a3d7d311ea33f83d060f551bd3834e3b
+  "ldap-reinitialise-slave:"	6242f9fab66d28f72fea7261a54c8cc8c24c1ff1
+  "migrate_automount.pl:"	5357b70398e2695fbd7172e6f2587a8d9cad6281
+  "MigrationTools-45.tar.bz2:"	844629313b0aa8fb9467a3a9ffeed3269349a81b
+  "migration-tools.txt:"	604b84490f017ed1181950373e0737819adf5646
+  "mull.schema:"	e5227020f72a1606ed38f2a28b3e228c006df247
+  "openldap-2.4.33.tgz:"	0cea642ba2dae1eb719da41bfedb9eba72ad504d
+  "openldap-2.4-admin-guide-add-vendor-doc.patch:"	07b1fbadea5140efac6a648da441a41875d1179a
+  "openldap-guide-2.4.tar.bz2:"	16c37e98688cdca60e34afe71aa08e4f9b3e73f8
+  "openldap.sysconfig:"	30b8b1189033a4ee56bb1256ee50c6aaa673ae23
+  "README-openldap2.4.mdv:"	003c6cdac21130078dcbbd5b6cc0940284b36ed4
+  "slapd.access.conf:"	b078b65a55ce9de803545b2765343b728119cc5a
+  "slapd.conf:"	fe4dae663634d1e07574fdfc18cfaa8966c0d096
+  "vendor.sdf:"	2a0f3a50225d7ab936a03059d80f2e521918f0a5
+  "vendor-standalone.sdf:"	da759af455937b5cd6c36bfc57dd9247ea1f3aa6

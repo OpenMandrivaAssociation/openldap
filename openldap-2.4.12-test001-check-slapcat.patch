@@ -1,0 +1,19 @@
+diff -up openldap-2.4.29/tests/scripts/test001-slapadd~ openldap-2.4.29/tests/scripts/test001-slapadd
+--- openldap-2.4.29/tests/scripts/test001-slapadd~	2012-02-09 00:18:46.000000000 +0200
++++ openldap-2.4.29/tests/scripts/test001-slapadd	2012-02-16 12:38:49.000000000 +0200
+@@ -139,6 +139,15 @@ fi
+ 
+ test $KILLSERVERS != no && kill -HUP $KILLPIDS
+ 
++echo "Testing database export with slapcat..."
++$SLAPCAT -f $CONF1 > $SEARCHOUT
++$SLAPCAT -f $CONF1 > $SEARCHOUT
++if [ "`wc -l < $SEARCHOUT`" == 0 ]
++then
++	echo "slapcat failed"
++	exit 1
++fi
++
+ echo ">>>>> Test succeeded"
+ 
+ test $KILLSERVERS != no && wait
