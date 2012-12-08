@@ -1,0 +1,392 @@
+#!/bin/sh
+#
+# ldap	This shell script takes care of starting and stopping
+#	ldap server (slapd).
+#
+# chkconfig: 345 39 61
+# description: LDAP stands for Lightweight Directory Access Protocol, used \
+#              for implementing the industry standard directory services.
+# processname: slapd
+# config: /etc/openldap/slapd.conf
+# pidfile: /var/run/ldap/slapd.pid
+#
+# Created by Christian Zoffoli <czoffoli@linux-mandrake.com>
+# Version 0.1b  2001-05-23
+#
+### BEGIN INIT INFO
+# Provides: ldap
+# Required-Start: $network
+# Required-Stop: $network
+# Default-Start: 3 4 5
+# Short-Description: LDAP servers (slapd)
+# Description: LDAP stands for Lightweight Directory Access Protocol, used
+#              for implementing the industry standard directory services.
+### END INIT INFO
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 0
+
+# define gprintf for distros without it:
+gprintf() {
+printf -- "$@"
+}
+
+# Source function library.
+if [ -f /etc/init.d/functions ] ; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ] ; then
+  . /etc/rc.d/init.d/functions
+else
+  exit 0
+fi
+
+SLAPDCONFFILE=/etc/openldap/slapd.conf
+SLAPDCONFDIR=/etc/openldap/slapd.d/
+LDAPUSER=ldap
+LDAPGROUP=ldap
+SLAPTEST_OPTS="-d4"
+MAXFILES=1024
+PIDFILE=/var/run/ldap/slapd.pid
+KILLDELAY=10
+
+slapd=/usr/sbin/slapd
+slaptest="/usr/sbin/slaptest"
+
+# Source an auxiliary options file if we have one, and pick up OPTIONS,
+# SLAPD_OPTIONS, and SLURPD_OPTIONS.
+if [ -r /etc/sysconfig/ldap ] ; then
+	. /etc/sysconfig/ldap
+fi
+if [ -e "${SLAPDCONFDIR}/cn=config.ldif" ]
+then
+	SLAPDCONF="$SLAPDCONFDIR"
+	SLAPDCONFTYPE="dir"
+	SLAPDCONFFLAG="-F"
+else
+	SLAPDCONF="$SLAPDCONFFILE"
+	SLAPDCONFTYPE="file"
+	SLAPDCONFFLAG="-f"
+fi
+
+[ -x ${slapd} ] || exit 0
+
+export TMPDIR=/var/tmp
+
+check_slurpd() {
+	if grep -Eq "^[[:space:]]*replica[[:space:]]+(host|uri)" $SLAPDCONF
+		then STARTSLURPD="${STARTSLURPD:-yes}"
+	fi
+	if [ "${STARTSLURPD:-no}" == "yes" ]
+	then return 0
+	fi
+
+	return 1
+}
+
+check_config() {
+	gprintf "Checking config %s %s: " "${SLAPDCONFTYPE}" "${SLAPDCONF}"
+	ERROR="`su $LDAPUSER - -s /bin/bash -c \"${slaptest} ${SLAPTEST_OPTS} ${SLAPDCONFFLAG} ${SLAPDCONF} $@\" 2>&1 > /dev/null`"
+	RETVAL=$?
+	if [ $RETVAL -eq 0 ]
+	then echo_success;echo
+	else echo_failure;echo;echo -e "$ERROR"
+	fi
+	return $RETVAL
+}
+
+convert_config() {
+	su - ldap -s /bin/bash -c "/usr/sbin/slaptest -f ${SLAPDCONFFILE} -F ${SLAPDCONFDIR}"
+}
+
+start() {
+	ulimit -n ${MAXFILES}
+	local RETVAL=0
+	local RETVAL2=0
+	local ARGS=""
+
+    # Start daemons.
+	ARGS="-u $LDAPUSER -g $LDAPGROUP"
+
+	# Syslog 
+	if [ -n "$SLAPDSYSLOGLOCALUSER" ] ; then
+		ARGS="$ARGS -l $SLAPDSYSLOGLOCALUSER"
+		if [ -n "$SLAPDSYSLOGLEVEL" ] ; then
+			ARGS="$ARGS -s $SLAPDSYSLOGLEVEL"
+		fi
+	fi
+
+	if [ "${SLAPDCONFTYPE}" == "file" -a "$SLAPDCONF" != "/etc/openldap/slapd.conf" ]
+	then ARGS="$ARGS -f $SLAPDCONF"
+	fi
+	if [ "${SLAPDCONFTYPE}" == "dir" -a "$SLAPDCONF" != "/etc/openldap/slapd.d" ]
+	then ARGS="$ARGS -F $SLAPDCONF"
+	fi
+
+	
+	have_tlsconf=0
+	if [ "${SLAPDCONFTYPE}" == "file" ] && grep -q "^[[:space:]]*TLS" $SLAPDCONF; then
+	        have_tlsconf=1
+	elif [ "${SLAPDCONFTYPE}" == "dir" ] && grep -qi "^[[:space:]]*olcTLS" "${SLAPDCONFDIR}/cn=config.ldif"; then
+	        have_tlsconf=1
+	fi
+	OUT="ldap"
+	if [ -n "$SLAPDURLLIST" ] ; then
+		if [ "$have_tlsconf" -eq 1 ];
+	       	then OUT="ldap + ldaps"
+		else SLAPDURLLIST=$( echo $SLAPDURLLIST | sed 's#ldaps:[^ ]*##g')
+		fi
+		ARGS="$ARGS -h \"$SLAPDURLLIST \""
+	else
+		if [ "$have_tlsconf" -eq 1 ];
+		then ARGS="$ARGS -h \"ldap:/// ldaps:///\"" && OUT="ldap + ldaps"
+		else ARGS="$ARGS -h ldap:/// "
+		fi
+	fi
+
+        gprintf "Starting %s: " "slapd ($OUT)"
+	daemon ${slapd} $ARGS
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/`basename ${slapd}`
+
+	if [ $RETVAL -eq 0 ]; then
+            if check_slurpd ; then
+		gprintf "slurpd is not longer supported, but configuration found"
+		warning
+		echo
+            fi
+	fi
+        return $RETVAL
+}
+
+stop() {
+	local RETVAL=0
+
+        # Stop daemons.
+	gprintf "Stopping %s: " slapd
+	if killproc -p ${PIDFILE} -d ${KILLDELAY} ${slapd} -0 >/dev/null 2>/dev/null
+	then killproc -p ${PIDFILE} -d ${KILLDELAY} ${slapd} 2>/dev/null
+	else internal_killproc -p ${PIDFILE} -d ${KILLDELAY} ${slapd} 2>/dev/null
+	fi
+	RETVAL=$?
+	echo
+
+        [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/`basename ${slapd}` /var/run/ldap/slapd.args
+	return $RETVAL
+}
+
+dbtool () {
+	local DO_RECOVER DO_PERMS
+	while [ $# -ne 0 ]
+	do
+		case $1 in
+			recover) DO_RECOVER=yes;;
+			fixperms) DO_PERMS=yes;;
+		esac
+		shift
+	done
+
+	# For bdb backends we want to recover the transaction logs:
+	if [ "$SLAPDCONFTYPE" == "file" ]
+		then dbdirs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+		else dbdirs=$(awk -F': ' '/^olcDbDirectory/ {print $2}' $(find "$SLAPDCONF" -type f -name '*db.ldif') /dev/null)
+	fi
+
+	if [ "$DO_RECOVER" == "yes" ]
+	then
+	# Find a db_recover
+	local DBRECOVER
+	if [ -x /usr/bin/slapd_db_recover ]
+	then
+		# private db_recover is the best choice
+		DBRECOVER=/usr/bin/slapd_db_recover
+	elif [ -x /usr/bin/db_recover ]
+	then
+		DBRECOVER=/usr/bin/db_recover
+	else
+		DBRECOVER=""
+	fi
+	fi
+
+	for dbdir in $dbdirs
+	do
+		# Ensure the ldap user owns all database directories
+		if [ "$DO_PERMS" == "yes" -a "$FIXPERMS" != "no" ]
+		then chown -R $LDAPUSER:$LDAPGROUP $dbdir
+		fi
+		if [ "$DO_RECOVER" -a -n "`find ${dbdir}/*.bdb 2>&-`" -a "$AUTORECOVER" != "no" ]
+		then
+			if [ -n "$DBRECOVER" ]
+			then
+				gprintf "Running %s on %s\n" "$DBRECOVER" "${dbdir}"
+				su $LDAPUSER -s /bin/bash -c "$DBRECOVER -h "${dbdir}" 2>&1 >/dev/null"
+				if [ -f "${dbdir}/alock" ]
+				then
+					gprintf "removing ${dbdir}/alock\n"
+					rm -f "${dbdir}/alock"
+				fi
+			else
+				gprintf "Warning: no %s available for %s\n" db_recover "${dbdir}"
+			fi
+		fi
+	done
+}
+
+internal_killproc() {
+	local RC killlevel= base pid pid_file= delay
+
+	RC=0; delay=3
+	# Test syntax.
+	if [ "$#" -eq 0 ]; then
+		gprintf "Usage: internal_killproc [-p pidfile] [ -d delay] {program} [-signal]\n"
+		return 1
+	fi
+	if [ "$1" = "-p" ]; then
+		pid_file=$2
+		shift 2
+	fi
+	if [ "$1" = "-d" ]; then
+		delay=$2
+		shift 2
+	fi
+        
+
+	# check for second arg to be kill level
+	[ -n "${2:-}" ] && killlevel=$2
+
+        # Save basename.
+        base=${1##*/}
+
+        # Find pid.
+	__pids_var_run "$1" "$pid_file"
+	if [ -z "$pid_file" -a -z "$pid" ]; then
+		pid="$(__pids_pidof "$1")"
+	fi
+
+        # Kill it.
+        if [ -n "$pid" ] ; then
+                [ "$BOOTUP" = "verbose" -a -z "${LSB:-}" ] && echo -n "$base "
+		if [ -z "$killlevel" ] ; then
+		       if checkpid $pid 2>&1; then
+			   # TERM first, then KILL if not dead
+			   kill -TERM $pid >/dev/null 2>&1
+			   usleep 100000
+			   if checkpid $pid && sleep 1 &&
+			      checkpid $pid && sleep $delay &&
+			      checkpid $pid ; then
+                                kill -KILL $pid >/dev/null 2>&1
+				usleep 100000
+			   fi
+		        fi
+			checkpid $pid
+			RC=$?
+			[ "$RC" -eq 0 ] && failure $"$base shutdown" || success $"$base shutdown"
+			RC=$((! $RC))
+		# use specified level only
+		else
+		        if checkpid $pid; then
+	                	kill $killlevel $pid >/dev/null 2>&1
+				RC=$?
+				[ "$RC" -eq 0 ] && success $"$base $killlevel" || failure $"$base $killlevel"
+			elif [ -n "${LSB:-}" ]; then
+				RC=7 # Program is not running
+			fi
+		fi
+	else
+		if [ -n "${LSB:-}" -a -n "$killlevel" ]; then
+			RC=7 # Program is not running
+		else
+			failure "%s shutdown" "$base"
+			RC=0
+		fi
+	fi
+
+        # Remove pid file if any.
+	if [ -z "$killlevel" ]; then
+            rm -f "${pid_file:-/var/run/$base.pid}"
+	fi
+	return $RC
+}
+
+# See how we were called.
+case "$1" in
+    start)
+	if [ "$AUTORECOVER" == "yes" ]
+	then dbtool recover fixperms
+	else dbtool fixperms
+	fi
+        start
+	RETVAL=$?
+        ;;
+    stop)
+        stop
+	RETVAL=$?
+        ;;
+    status)
+        status ${slapd}
+	RETVAL=$?
+	;;
+    force-restart)
+	stop
+        dbtool fixperms
+	start
+	RETVAL=$?
+	;;
+    restart)
+	if check_config -u
+	then
+		stop
+        	dbtool fixperms
+		start
+	fi
+	RETVAL=$?
+	;;
+    reload)
+    	killall -HUP ${slapd}
+	RETVAL=$?
+	;;
+    condrestart)
+       RETVAL=0
+        if [ -f /var/lock/subsys/`basename ${slapd}` ] ; then
+            stop
+            start
+	    RETVAL=$?
+        fi
+	;;
+    recover)
+    	RETVAL=0
+	if status ${slapd} >/dev/null
+	then
+		if stop
+		then
+			dbtool recover fixperms
+			start
+		else
+			gprintf "Failed to stop\n"
+		fi
+	else
+		dbtool recover fixperms
+	fi
+	RETVAL=$?
+	;;
+    check)
+	if status ${slapd} >/dev/null
+	then check_config -u
+	else check_config
+	fi
+	RETVAL=$?
+	;;
+     convert)
+     	convert_config
+	RETVAL=$?
+	;;
+    *)
+	gprintf "Usage: %s\n" "$0 {start|stop|restart|force-restart|status|condrestart|check|recover|convert}"
+	RETVAL=1
+	;;
+esac
+
+exit $RETVAL

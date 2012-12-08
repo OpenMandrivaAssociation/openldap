@@ -1,21 +1,11 @@
 %define _build_pkgcheck_set %{nil}
 %define _build_pkgcheck_srpm %{nil}
 
-%define pkg_name	openldap
-%define version	2.4.33
-%define rel 1
-%global	beta %{nil}
-
-%{?!mklibname:%{error:You are missing macros, build will fail, see http://wiki.mandriva.com/en/Projects/BackPorts#Building_Mandriva_SRPMS_on_other_distributions}}
-
-%{?!distsuffix:%define distsuffix mdk}
-%{?!distversion:%define distversion %(echo $[%{mdkversion}/10])}
-%{?!mkrel:%define mkrel(c:) %{-c:0.%{-c*}.}%{!?_with_unstable:%(perl -e '$_="%{1}";m/(.\*\\D\+)?(\\d+)$/;$rel=${2}-1;re;print "$1$rel";').%{?subrel:%subrel}%{!?subrel:1}.%{distversion}%{?_with_unstable:%{1}}%{distsuffix}}}
-
-%define release %mkrel %rel
+%define pkg_name openldap
+%global beta %{nil}
 
 #defaults
-%define build_system 0
+%define build_system 1
 %define build_alternatives 0
 %define build_modules 1
 %define build_modpacks 0
@@ -25,21 +15,6 @@
 %define build_smbk5pwd 1
 %define build_asmmutex 0
 %global build_migration 0
-
-%{?mgaversion:%global mdkversion 201100}
-%if %{?mdkversion:0}%{?!mdkversion:1}
-# OK, we're not on a Mandriva box ... set this to the lowest we support
-# and define a new macro we can use to know we're not in Mandriva
-%define mdkversion 1000
-%global notmdk 1
-%endif
-
-%if %mdkversion >= 200810
-%define build_system 1
-%else
-%global build_migration 1
-%define _with_migration 1
-%endif
 
 %{?_with_system: %global build_system 1}
 %{?_without_system: %global build_system 0}
@@ -56,61 +31,20 @@
 %{?_with_asmmutex: %global build_asmmutex 1}
 %{?_without_asmmutex: %global build_asmmutex 0}
 
-%define major 		2.4_2
+%define major 2.4_2
 %define fname ldap
-%define libname %mklibname %fname %major
-%define migtools_ver 	45
+%define libname %mklibname %{fname} %{major}
+%define migtools_ver 45
 
 # we want to use the default db version for each release, so as
 # to make backport binary compatibles
 # excepted for very old systems, where we use bundled db
-%define dbutils db4-utils
-%define dbutilsprefix db_
-%define bundled_db_source_ver 5.1.29
+%define bundled_db_source_ver 4.8.30
 %define dbdevel db-devel
-%if %mdkversion > 201020
-    %global db_internal 1
-    %define dbver 5.1.25
-    %define dbutils db-utils
-    %define dbutilsprefix db51_
-%endif
-
-%if %mdkversion <= 201020
-    %global db_internal 1
-    #define dbver 4.8.26
-%endif
-
-%if %{?mgaversion:1}%{?!mgaversion:0}
-%if %mgaversion >= 3
-        %define dbutils db53-utils
-        %define dbver 5.3.21
-        %define dbutilsprefix db53_
-        %define dbdevel db5-devel
-%endif
-%if %mgaversion <= 2
-	%define dbutils db51-utils
-        %define dbver 5.1.25
-	%define dbutilsprefix db51_
-        %define dbdevel db5-devel
-        %global db_internal 1
-%endif
-%if %mgaversion <= 1
-	%define dbutils db51-utils
-        %define dbver 5.1.19
-	%define dbutilsprefix db51_
-%endif
-%endif # mgaversion
-
-%define dbname %(a=%dbver;echo ${a%.*})
-%{?_with_dbinternal: %global db_internal 1}
-%{?_without_dbinternal: %global db_internal 0}
-%if %db_internal
-%define dbver %bundled_db_source_ver
-%endif
-
-%if %mdkversion < 200910
-    %global __libtoolize /bin/true
-%endif
+%global db_internal 0
+%define dbver 5.2.0
+%define dbutils db-utils
+%define dbutilsprefix db52_
 
 %define ol_ver_major 2.4
 %if %build_system
@@ -128,11 +62,7 @@
 %endif
 
 %global clientbin	ldapadd,ldapcompare,ldapdelete,ldapmodify,ldapmodrdn,ldappasswd,ldapsearch,ldapwhoami,ldapexop
-%if %db_internal
-%global serverbin	slapd_db_archive,slapd_db_checkpoint,slapd_db_deadlock,slapd_db_dump,slapd_db_load,slapd_db_printlog,slapd_db_recover,slapd_db_stat,slapd_db_upgrade,slapd_db_verify,slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester,ldif-filter
-%else
 %global serverbin	slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester,ldif-filter
-%endif
 %define serversbin	slapadd,slapcat,slapd,slapdn,slapindex,slappasswd,slaptest,slurpd,slapacl,slapauth
 
 #localstatedir is passed directly to configure, and we want it to be /var/lib
@@ -151,16 +81,16 @@
 %{?_without_sql: %global build_sql 0}
 %global back_perl 0
 
-Summary: 	LDAP servers and sample clients
-Name: 		%{pkg_name}%{ol_major}
-Version: 	%{version}
-Release: 	%{release}
-License: 	Artistic
-Group: 		System/Servers
-URL: 		http://www.openldap.org
+Summary:	LDAP servers and sample clients
+Name:		%{pkg_name}%{ol_major}
+Version:	2.4.33
+Release:	1
+License:	Artistic
+Group:		System/Servers
+URL:		http://www.openldap.org
 
 # Openldap source
-Source0: 	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{pkg_name}-%{version}%{beta}.tgz
+Source0:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{pkg_name}-%{version}%{beta}.tgz
 
 ## To generate ths tarball, check the docs out of CVS:
 # cvs -d :pserver:anonymous@cvs.OpenLDAP.org:/repo/OpenLDAP co \
@@ -199,15 +129,8 @@ Source25:	ldap-hot-db-backup
 Source26:	ldap-reinitialise-slave
 Source27:	ldap-common
 
-# Migration tools
-Source11:	http://www.padl.com/download/MigrationTools-%{migtools_ver}.tar.bz2
-Source3: 	migration-tools.txt
-Source4: 	migrate_automount.pl
-
-Source30:	http://www.sleepycat.com/update/snapshot/db-%{bundled_db_source_ver}.tar.gz
-
 # Extended Schema 
-Source54: 	mull.schema
+Source54:	mull.schema
 
 # Doc sources, used to build SOURCE12 and SOURCE13 above
 Source100:	openldap-2.4-admin-guide-add-vendor-doc.patch
@@ -215,7 +138,7 @@ Source101:	vendor.sdf
 Source102:	vendor-standalone.sdf
 
 # Chris Patches
-Patch0: 	%{pkg_name}-2.3.4-config.patch
+Patch0:		%{pkg_name}-2.3.4-config.patch
 Patch1:		%{pkg_name}-2.0.7-module.patch
 
 #Fix various paths in smbk5pwd:
@@ -224,66 +147,46 @@ Patch2:		openldap-2.3-smbk5passwd-paths.patch
 # overlay:
 Patch3:		openldap-2.3.4-smbk5passwd-only-smb.patch
 Patch4:		openldap-2.4.25-contrib-makefiles-with-tests.patch
-Patch5:     openldap-2.4.8-fix-lib-perms.patch
+Patch5:		openldap-2.4.8-fix-lib-perms.patch
 Patch6:		openldap-2.4.12-test001-check-slapcat.patch
 
 # RH + PLD Patches
 Patch15:	%{pkg_name}-cldap.patch
 
-# Migration tools Patch
-Patch40: 	MigrationTools-34-instdir.patch
-Patch41: 	MigrationTools-36-mktemp.patch
-Patch42: 	MigrationTools-27-simple.patch
-Patch43: 	MigrationTools-26-suffix.patch
-Patch45:	MigrationTools-45-i18n.patch
 # schema patch
-Patch46: 	openldap-2.0.21-schema.patch
-Patch47: 	openldap-2.4.12-change-dyngroup-schema.patch
-# http://qa.mandriva.com/show_bug.cgi?id=15499
-Patch48:	MigrationTools-45-structural.patch
+Patch46:	openldap-2.0.21-schema.patch
+Patch47:	openldap-2.4.12-change-dyngroup-schema.patch
 
-# Upstream bdb patches
-
-# http://www.oracle.com/technology/software/products/berkeley-db/db/
-%if %db_internal
-# used by s_config, which is required by above patch:
-BuildRequires:	ed autoconf%{?notmdk: >= 2.5}
-%else
-# txn_nolog added in 4.2.52-6mdk
-BuildRequires: 	%dbdevel >= %{dbver}
-%endif
-
-Patch53: %pkg_name-ntlm.patch
-# preserves the temp file used to import data if an error occured
-Patch54: MigrationTools-40-preserveldif.patch
+Patch53:	%pkg_name-ntlm.patch
 
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
 
-%{?_with_cyrussasl:BuildRequires: 	%{?!notmdk:libsasl-devel}%{?notmdk:cyrus-sasl-devel}}
+%{?_with_cyrussasl:BuildRequires:	libsasl-devel}
 %{?_with_kerberos:BuildRequires:	krb5-devel}
 BuildRequires:	openssl-devel, perl
 %if %build_slp
-BuildRequires: openslp-devel
+BuildRequires:	openslp-devel
 %endif
 %if %build_heimdal
-BuildRequires: heimdal-devel
+BuildRequires:	heimdal-devel
 %endif
 %if %build_sql
-BuildRequires: 	unixODBC-devel
+BuildRequires:	unixODBC-devel
 %endif
 %if %back_perl
 BuildRequires:	perl-devel
 %endif
-BuildRequires:  ncurses-devel >= 5.0
-BuildRequires: tcp_wrappers%{?!notmdk:-devel} libtool%{?!notmdk:-devel}
-BuildRequires:  krb5-devel
+BuildRequires:	%{dbdevel} >= %{dbver}
+BuildRequires:	ncurses-devel >= 5.0
+BuildRequires:	tcp_wrappers-devel
+BuildRequires:	libltdl-devel
+BuildRequires:	krb5-devel
 BuildRequires:	groff
 # for make test:
 BuildRequires:	diffutils
-BuildRoot: 	%{_tmppath}/%{name}-%{version}-root
-Requires:	shadow-utils, setup >= 2.2.0-6mdk
+Requires:	shadow-utils, setup
 
 %description
 OpenLDAP is an open source suite of LDAP (Lightweight Directory Access
@@ -296,14 +199,10 @@ only configuration files used by the libraries.
 Install openldap if you need LDAP applications and tools.
 
 %package servers
-Summary: 	OpenLDAP servers and related files
-Group: 		System/Servers
-%if %{?notmdk:1}%{?!notmdk:0}
-Requires(pre):	/usr/sbin/useradd /usr/sbin/groupadd coreutils
-%else
-Requires(pre):	rpm-helper >= 0.23 coreutils
+Summary:	OpenLDAP servers and related files
+Group:		System/Servers
+Requires(pre):	rpm-helper >= 0.23 coreutils shadow-utils
 BuildRequires:	rpm-helper >= 0.23
-%endif
 %if !%build_modpacks
 Provides:	%{name}-back_dnssrv = %{version}-%{release}
 Provides:	%{name}-back_ldap = %{version}-%{release}
@@ -314,27 +213,26 @@ Obsoletes:	%{name}-back_ldap < %{version}-%{release}
 Obsoletes:	%{name}-back_passwd < %{version}-%{release}
 Obsoletes:	%{name}-back_sql < %{version}-%{release}
 %endif
-%if !%db_internal
-Requires(pre):	%dbutils
-Requires(post):	%dbutils
+Requires(pre):	%{dbutils}
+Requires(post):	%{dbutils}
 # slapd checks at startup if the library version matches exactly what it
 # was compiled against, so we cant allow newer versions, e.g.:
 #bdb_back_initialize: BDB library version mismatch: expected Berkeley DB 4.8.26: (December 30, 2009), got Berkeley DB 4.8.30: (March 25, 2011)
 # This might need to be changed to a library dependency, but we need to verify
 # library provides on multiple distros before doing that
-Requires:	%dbutils = %dbver
-%endif
+Requires:	%{dbutils} >= %{dbver}
+
 %if %{?_with_cyrussasl:1}%{!?_with_cyrussasl:0}
 %define saslver %([ -f "%{_includedir}/sasl/sasl.h" ] && echo -e "#include <sasl/sasl.h>\\nSASL_VERSION_MAJOR SASL_VERSION_MINOR SASL_VERSION_STEP"|cpp|awk 'END {printf "%s.%s.%s",$1,$2,$3}' || echo "2.1.22")
 %define sasllib %mklibname sasl 2
 #Ensure we have the sasl library we compiled against available in post so
 #slapadd etc works
-Requires(post):	%{?!notmdk:%sasllib}%{?notmdk:cyrus-sasl} = %saslver
+Requires(post):	%{sasllib} = %{saslver}
 %endif
-Requires: 	%libname = %{version}-%{release}
-Conflicts:	kolab < 1.9.5-0.20050801.4mdk
-Requires: 	%{pkg_name}%{ol_major}-extra-schemas >= 1.3-7
-Requires(pre): 	%{pkg_name}%{ol_major}-extra-schemas >= 1.3-7
+
+Requires:	%{libname} = %{version}-%{release}
+Requires:	%{pkg_name}%{ol_major}-extra-schemas >= 1.3-7
+Requires(pre):	%{pkg_name}%{ol_major}-extra-schemas >= 1.3-7
 
 %description servers
 OpenLDAP Servers
@@ -347,124 +245,106 @@ This server package was compiled with support for the %{?_with_gdbm:gdbm}%{!?_wi
 database library.
 
 %package clients
-Summary: 	OpenLDAP clients and related files
-Group: 		System/Servers
-Requires: 	%libname = %{version}-%{release}
+Summary:	OpenLDAP clients and related files
+Group:		System/Servers
+Requires:	%{libname} = %{version}-%{release}
 
 %description clients
 OpenLDAP clients
 
 This package contains command-line ldap clients (ldapsearch, ldapadd etc)
 
-%if %build_migration
-%package migration
-Summary: 	Set of scripts for migration of a nis domain to a ldap directory
-Group: 		System/Configuration/Other
-Requires: 	%{name}-servers = %{version}
-Requires: 	%{name}-clients = %{version}
+%package -n %{libname}
+Summary:	OpenLDAP libraries
+Group:		System/Libraries
+Provides:	lib%{fname} = %{version}-%{release}
+Requires:	%{name}
 
-%description migration
-This package contains a set of scripts for migrating data from local files
-(ie /etc/passwd) or a nis domain to an ldap directory.
-%endif
-
-%package -n %libname
-Summary: 	OpenLDAP libraries
-Group: 		System/Libraries
-Provides:       lib%fname = %version-%release
-# This is needed so all libldap2 applications get /etc/openldap/ldap.conf
-# which was moved from openldap-clients to openldap in 2.1.25-4mdk
-Requires:	%{name} >= 2.1.25-4mdk
-
-%description -n %libname
+%description -n %{libname}
 This package includes the libraries needed by ldap applications.
 
-
-%package -n %libname-devel
-Summary: 	OpenLDAP development libraries and header files
-Group: 		Development/C
-Requires: 	%libname = %{version}-%release
-Requires: 	tcp_wrappers%{?!notmdk:-devel}
-Provides:       %{name}-devel = %{version}-%{release}
+%package -n %{libname}-devel
+Summary:	OpenLDAP development libraries and header files
+Group:		Development/C
+Requires:	%{libname} = %{version}-%{release}
+Requires:	tcp_wrappers-devel
+Provides:	%{name}-devel = %{version}-%{release}
 %if %build_system
-Provides: 	lib%fname-devel = %version-%release
+Provides: 	lib%{fname}-devel = %{version}-%{release}
 Provides:	openldap2-devel = %{version}-%{release}
-Obsoletes: 	openldap-devel
+Obsoletes: 	openldap-devel < %{version}-%{release}
 %endif
 Conflicts:	libldap1-devel
 Conflicts:	%mklibname -d ldap 2
 Conflicts:	%mklibname -d ldap 2.3_0
 
-%description -n %libname-devel
+%description -n %{libname}-devel
 This package includes the development libraries and header files
 needed for compiling applications that use LDAP internals.  Install
 this package only if you plan to develop or will need to compile
 LDAP clients.
 
-
 %package -n %{libname}-static-devel
 Summary: 	OpenLDAP development static libraries
 Group: 		Development/C
-Requires: 	%libname-devel = %{version}-%release
+Requires: 	%{libname}-devel = %{version}-%{release}
 %if %build_system
-Provides: 	lib%fname-devel-static = %version-%release
-Provides: 	lib%fname-static-devel = %version-%release
+Provides: 	lib%{fname}-devel-static = %{version}-%{release}
+Provides: 	lib%{fname}-static-devel = %{version}-%{release}
 Provides:	openldap-devel-static = %{version}-%{release}
 Provides:	openldap-static-devel = %{version}-%{release}
-Obsoletes: 	openldap-devel-static
+Obsoletes: 	openldap-devel-static < %{version}-%{release}
 %endif
 Conflicts:	libldap1-devel
 
-
-%description -n %libname-static-devel
+%description -n %{libname}-static-devel
 OpenLDAP development static libraries
 
 %if %build_modpacks
 %package back_dnssrv
-Summary: 	Module dnssrv for OpenLDAP 
-Group: 		System/Libraries
-Requires: 	%libname = %{version}-%{release}
-Requires: 	openldap-servers = %{version}-%{release}
+Summary:	Module dnssrv for OpenLDAP
+Group:		System/Libraries
+Requires:	%{libname} = %{version}-%{release}
+Requires:	openldap-servers = %{version}-%{release}
 
 %description back_dnssrv
 The dnssrv daabase backend module for OpenLDAP daemon
 
 %package back_ldap
-Summary: 	Module ldap for OpenLDAP 
-Group: 		System/Libraries
-Requires: 	%libname = %{version}-%{release}
-Requires: 	openldap-servers = %{version}-%{release}
+Summary:	Module ldap for OpenLDAP
+Group:		System/Libraries
+Requires:	%{libname} = %{version}-%{release}
+Requires:	openldap-servers = %{version}-%{release}
 
 %description back_ldap
 The ldap database backend module for OpenLDAP daemon
 
-
 %package back_passwd
-Summary: 	Module passwd for OpenLDAP 
-Group: 		System/Libraries
-Requires: 	%libname = %{version}-%release
-Requires: 	openldap-servers = %{version}-%release
+Summary:	Module passwd for OpenLDAP
+Group:		System/Libraries
+Requires:	%{libname} = %{version}-%{release}
+Requires:	openldap-servers = %{version}-%{release}
 
 %description back_passwd
 The passwd database backend module for OpenLDAP daemon
 %endif
+
 %if %build_sql && %build_modpacks
 %package back_sql
-Summary: 	Module sql for OpenLDAP 
-Group: 		System/Libraries
-Requires: 	%libname = %{version}-%{release}
-Requires: 	openldap-servers = %{version}-%{release}
+Summary:	Module sql for OpenLDAP
+Group:		System/Libraries
+Requires:	%{libname} = %{version}-%{release}
+Requires:	openldap-servers = %{version}-%{release}
 
 %description back_sql
 The sql database backend module for OpenLDAP daemon
 %endif
 
 %package doc
-Summary: 	OpenLDAP documentation and administration guide
-Group: 		Documentation
-Requires: 	openldap
+Summary:	OpenLDAP documentation and administration guide
+Group:		Books/Computer books
+Requires:	openldap
 Provides:	openldap-guide
-Obsoletes:	openldap-guide
 
 %description doc
 OpenLDAP documentation, incuding RFCs and the adminitration guide
@@ -482,7 +362,6 @@ testing the installed server, and seeing examples of how to use the features.
 The intention is that it should be possible to run the entire test suite on
 the installed server using this package.
 
-
 %package testprogs
 Summary:	OpenLDAP Test Suite - simple testing client binaries
 Group:		Development/Other
@@ -492,18 +371,7 @@ Programs shipped with the test suite which are used by the test suite, and may
 also be useful as load generators etc.
 
 %prep
-%if %db_internal
-%setup -q -n %{pkg_name}-%{version}%{beta} %{?_with_migration:-a 11} -a 30 
-pushd db-%{dbver} >/dev/null
-
-# upstream bdb patches
-
-#(cd dist && ./s_config)
-#%endif
-popd >/dev/null
-%else
-%setup -q  -n %{pkg_name}-%{version}%{beta} %{?_with_migration:-a 11}
-%endif
+%setup -q  -n %{pkg_name}-%{version}%{beta}
 
 %patch0 -p1 -b .config
 perl -pi -e 's/^(#define\s+DEFAULT_SLURPD_REPLICA_DIR.*)ldap(.*)/${1}ldap%{ol_major}${2}/' servers/slurpd/slurp.h
@@ -515,24 +383,10 @@ perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 %endif
 %patch4 -p1 -b .contribmake
 
-%patch15 -p1 -b .cldap 
-
-
-%if %build_migration
-pushd MigrationTools-%{migtools_ver}
-%patch40 -p1 -b .instdir
-%patch41 -p1 -b .mktemp
-%patch42 -p1 -b .simple
-%patch43 -p1 -b .suffix
-%patch45 -p2 -b .i18n
-%patch48 -p2 -b .account
-%patch54 -p1 -b .preserve
-popd
-%endif
+%patch15 -p1 -b .cldap
 
 %patch46 -p1 -b .mdk
 %patch47 -p1 -b .dyngroup
-#bgmilne %patch47 -p1 -b .maildropschema
 # FIXME
 %patch53 -p1 -b .ntlm
 
@@ -561,58 +415,6 @@ PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 CFLAGS=`echo $CFLAGS|sed -e 's|-fPIE||g'`
 CXXFLAGS=`echo $CXXFLAGS|sed -e 's|-fPIE||g'`
 
-%if %db_internal
-dbdir=`pwd`/db-instroot
-pushd db-%{dbver}/build_unix
-CONFIGURE_TOP="../dist" %configure2_5x \
-        --enable-shared --disable-static \
-        --with-uniquename=_openldap_slapd%{ol_suffix}_mdv \
-	--program-prefix=slapd%{ol_major}_ \
-%if %{build_asmmutex}
-%ifarch %{ix86}
-	--disable-posixmutexes --with-mutex=x86/gcc-assembly
-%endif
-%ifarch x86_64
-	--disable-posixmutexes --with-mutex=x86_64/gcc-assembly
-%endif
-%ifarch alpha
-	--disable-posixmutexes --with-mutex=ALPHA/gcc-assembly
-%endif
-%ifarch ia64
-	--disable-posixmutexes --with-mutex=ia64/gcc-assembly
-%endif
-%ifarch ppc
-	--disable-posixmutexes --with-mutex=PPC/gcc-assembly
-%endif
-%ifarch sparc
-	--disable-posixmutexes --with-mutex=Sparc/gcc-assembly
-%endif
-%else
-	--with-mutex=POSIX/pthreads/library
-%endif
-
-#--with-mutex=POSIX/pthreads/library
-#JMD: use --disable-posixmutexes so it works on a non-NPTL kernel, and use
-#assembler mutexes since they're *way* faster and correctly implemented.
-
-perl -pi -e 's/^(libdb_base=\s+)\w+/\1libslapd%{ol_suffix}_db/g' Makefile
-#Fix soname and libname in libtool:
-#perl -pi -e 's/shared_ext/shrext/g' libtool
-make
-rm -Rf $dbdir
-mkdir -p $dbdir
-make DESTDIR=$dbdir install
-ln -sf ${dbdir}%{_libdir}/libslapd%{ol_suffix}_db-%{dbname}.so ${dbdir}/%{_libdir}/libdb-%{dbname}.so
-chmod u+w ${dbdir}/usr/include/db.h
-grep __lock_ db_int_def.h >> ${dbdir}/usr/include/db.h
-popd
-export CPPFLAGS="-I${dbdir}%{_includedir} $CPPFLAGS"
-#export LDFLAGS="-L${dbdir}/%{_libdir} $LDFLAGS"
-#default LDFLAGS will be added, and having some options twice breaks build
-export LDFLAGS="-L${dbdir}%{_libdir}"
-export LD_LIBRARY_PATH="${dbdir}%{_libdir}"
-%endif
-
 unset CONFIGURE_TOP
 
 #FIXME: Some script backends should not be used with threads, mostly shell/perl
@@ -625,9 +427,7 @@ perl -pi -e 's,({"slap\w+)",${1}%{ol_major}",g' servers/slapd/main.c
 # don't choose db4.3 even if it is available
 export ol_cv_db_db_4_dot_3=no
 # try and miss linuxthreads, so we get a threading lib on glibc2.4:
-%if %mdkversion > 200600
 export ol_cv_header_linux_threads=no
-%endif
 #rh only:
 export CPPFLAGS="-I%{_prefix}/kerberos/include $CPPFLAGS"
 export LDFLAGS="-L%{_prefix}/kerberos/%{_lib} $LDFLAGS"
@@ -708,9 +508,7 @@ if [ -d /usr/kerberos/%{_lib} ]; then export LIBRARY_PATH=/usr/kerberos/%{_lib};
 perl -pi -e 's/radius.la//g' contrib/slapd-modules/passwd/Makefile
 #acl broken
 for i in addpartial allop allowed autogroup cloak denyop dsaschema dupent  \
-%if %mdkversion >= 201010
     kinit \
-%endif
     lastbind lastmod noopsrch nops \
 %if %build_nssov
     nssov \
@@ -750,10 +548,6 @@ popd
 %endif
 #disable icecream:
 #PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
-%if %db_internal
-dbdir=`pwd`/db-instroot
-export LD_LIBRARY_PATH="${dbdir}%{_libdir}"
-%endif
 # meta test seems to timeout on the Mandriva cluster:
 #export TEST_META=no
 # Use a pseudo-random number between 9000 and 10000 as base port for slapd in tests
@@ -767,9 +561,7 @@ make -C tests %{!?tests:test}%{?tests:%tests}
 export DONT_GPRINTIFY=1
 export DONT_REMOVE_LIBTOOL_FILES=1
 for i in acl addpartial allop allowed autogroup \
-%if %mdkversion >= 201010
  kinit \
-%endif
 %if %build_nssov
     nssov \
 %endif
@@ -782,18 +574,6 @@ cp -af contrib/slapd-modules/$i/README{,.$i}
 done
 cp contrib/slapd-modules/passwd/sha2/README{,.sha2}
 rm -Rf %{buildroot}
-
-%if %db_internal
-pushd db-%{dbver}/build_unix
-%makeinstall_std STRIP="/bin/true"
-# bash bug? globs not expanding with -e
-set +e
-for i in %{buildroot}/%{_bindir}/db_*;do mv $i ${i/db_/slapd_db_};done
-set -e
-popd
-# For contrib tests
-export LD_LIBRARY_PATH=%{buildroot}/%{_libdir}
-%endif
 
 %makeinstall_std STRIP="" 
 
@@ -825,9 +605,7 @@ cp contrib/slapd-modules/nops/slapo-nops.5 %{buildroot}/%{_mandir}/man5
 #smbk5pwd skipped, installed as smbpwd above
 #dsaschema broken on 32bit
 for i in addpartial allop allowed autogroup cloak denyop dupent \
-%if %mdkversion >= 201010
     kinit \
-%endif
     lastbind lastmod noopsrch nops \
 %if %build_nssov
     nssov \
@@ -928,17 +706,6 @@ perl -pi -e 's,%{_bindir}/db_,%{_bindir}/%{dbutilsprefix},g' %{buildroot}/%{_dat
 echo "# This is a good place to put your schema definitions " > %{buildroot}%{_sysconfdir}/%{name}/schema/local.schema
 chmod 644 %{buildroot}%{_sysconfdir}/%{name}/schema/local.schema
 
-### deal with the migration tools
-%if %build_migration
-install -d %{buildroot}%{_datadir}/%{name}/migration
-install -m 755 MigrationTools-%{migtools_ver}/{*.pl,*.sh,*.txt,*.ph} %{buildroot}%{_datadir}/%{name}/migration
-install -m 644 MigrationTools-%{migtools_ver}/README %{SOURCE3} %{buildroot}%{_datadir}/%{name}/migration
-install -m 755 %{SOURCE4} %{buildroot}%{_datadir}/%{name}/migration
-
-cp MigrationTools-%{migtools_ver}/README README.migration
-cp %{SOURCE3} TOOLS.migration
-%endif
-
 ### Guide
 mkdir -p %{buildroot}/%{_docdir}/
 tar xvjf %{SOURCE12} -C %{buildroot}/%{_docdir}/
@@ -959,7 +726,7 @@ perl -pi -e "s|%{buildroot}||g" %{buildroot}%{_mandir}/*/*.*
 #mkdir -p %{buildroot}%{_sysconfdir}/ssl/%{name}
 
 #rename binaries
-%if !%{build_system} || %build_alternatives
+%if !%{build_system} || %{build_alternatives}
 for OLD in %{buildroot}/%{_bindir}/{%{clientbin}}
 do
     NEW=`echo ${OLD}%{alternative_major}`
@@ -989,11 +756,7 @@ do
     fi
 done
 # And the man pages too:
-%if %db_internal
-for OLD in %{buildroot}/%{_mandir}/man?/{%{serverbin},%{serversbin},slapo}*
-%else
 for OLD in %{buildroot}/%{_mandir}/man?/{%{serversbin},slapo}*
-%endif
 do
     if [ -e $OLD ]
     then
@@ -1025,11 +788,6 @@ install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{nam
 rm -f %{buildroot}/%{_libdir}/*.la
 rm -f %{buildroot}%{_libdir}/%{name}/*.a
 
-%clean 
-[ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
-#rm -rf $RPM_BUILD_DIR/%{name}-%{version}
-
-
 %pre servers
 %_pre_useradd ldap %{_var}/lib/ldap /bin/false
 %_pre_groupadd ldap ldap
@@ -1054,7 +812,7 @@ MIGRATE=`%{_sbindir}/slapd%{ol_major} -VV 2>&1|while read a b c d e;do case $d i
 if [ "$1" -ne 1 -a -e "$SLAPDCONF" -a "$MIGRATE" != "nomigrate" ]
 then 
 #`awk '/^[:space:]*directory[:space:]*\w*/ {print $2}' /etc/%{name}/slapd.conf`
-dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2;suf="";dir=""}; /^[:space:]*suffix[:space:]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[:space:]*directory[:space:]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
 do
 	dbdir=${db/:*/}
@@ -1083,9 +841,6 @@ touch /var/lock/subsys/slapd%{ol_major}
 fi
 
 %post servers
-%if %mdkversion < 200900
-/sbin/ldconfig
-%endif
 SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap%{ol_major} status 2>/dev/null|grep -q stopped;echo $?`
 [ $SLAPD_STATUS -eq 1 ] && service ldap%{ol_major} stop
 # bgmilne: part 2 of gdbm->dbb conversion for data created with 
@@ -1097,7 +852,7 @@ LDAPGROUP=ldap
 SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
 if [ -e "$SLAPDCONF" ] 
 then
-dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2;suf="";dir=""}; /^[:space:]*suffix[:space:]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[:space:]*directory[:space:]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
 do	
 	dbdir=${db/:*/}
@@ -1229,11 +984,7 @@ fi
 %preun servers
 %_preun_service ldap%{ol_major}
 
-
 %postun servers
-%if %mdkversion < 200900
-/sbin/ldconfig
-%endif
 %if %{?_preun_syslogdel:1}%{?!_preun_syslogdel:0}
 %_preun_syslogdel
 %else
@@ -1252,14 +1003,6 @@ fi
 %_postun_userdel ldap
 %_postun_groupdel ldap
 
-
-%if %mdkversion < 200900
-%post -n %{libname} -p /sbin/ldconfig
-%endif
-%if %mdkversion < 200900
-%postun -n %{libname} -p /sbin/ldconfig
-%endif
-
 %triggerpostun -- openldap-clients < 2.1.25-5mdk
 # We may have openldap client configuration in /etc/ldap.conf
 # which now needs to be in /etc/openldap/ldap.conf
@@ -1270,7 +1013,6 @@ then
 fi
 
 %files
-%defattr(-,root,root)
 %config(noreplace) %{_sysconfdir}/%{name}/ldapserver
 %attr(644,root,root) %config(noreplace) %{_sysconfdir}/%{name}/ldap.conf
 %{_mandir}/man5/ldap.conf%{ol_major}.5*
@@ -1279,50 +1021,24 @@ fi
 
 
 %files doc
-%defattr(-,root,root)
 %doc ANNOUNCEMENT CHANGES COPYRIGHT LICENSE README 
-%if %build_migration
-%doc README.migration TOOLS.migration
-%endif
 %doc doc/rfc doc/drafts
-#%config(noreplace) %{_sysconfdir}/%{name}/ldapfilter.conf
-#%config(noreplace) %{_sysconfdir}/%{name}/ldapsearchprefs.conf
-#%config(noreplace) %{_sysconfdir}/%{name}/ldaptemplates.conf
-#%{_datadir}/%{name}/ldapfriendly
-#%{_mandir}/man5/ldapfilter.conf.5*
-#%{_mandir}/man5/ldapfriendly.5*
-#%{_mandir}/man5/ldapsearchprefs.conf.5*
-#%{_mandir}/man5/ldaptemplates.conf.5*
 %doc %{_docdir}/%{name}-guide
 
-%if %build_migration
-%files migration
-%defattr(-,root,root)
-%{_datadir}/%{name}/migration
-%endif
-
-
 %files servers
-%defattr(-,root,root)
 %dir %{_sysconfdir}/%{name}
 %dir %{_sysconfdir}/%{name}/schema
-#%dir %{_sysconfdir}/%{name}/slapd.d
-#%attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/ssl/openldap/ldap.pem
 %attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/%{name}/slapd.conf
 %attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/%{name}/slapd.ldif
 %dir %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d
 %attr(640,root,ldap) %{_sysconfdir}/%{name}/DB_CONFIG.example
 %attr(640,root,ldap) %config %{_sysconfdir}/%{name}/slapd.access.conf
-
-#dir %{_sysconfdir}/ssl/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/schema/*.schema
 %dir %{_datadir}/%{name}
 %dir %{_datadir}/%{name}/schema
 %{_datadir}/%{name}/schema/*.schema
 %{_datadir}/%{name}/schema/*.ldif
 %{_datadir}/%{name}/schema/README
-#%dir %{_datadir}/%{name}/ucdata
-#%{_datadir}/%{name}/ucdata/*.dat
 %{_datadir}/%{name}/scripts
 %{_sysconfdir}/cron.hourly/ldap-hot-db-backup%{ol_major}
 %{_sysconfdir}/cron.daily/ldap-hot-db-backup%{ol_major}
@@ -1336,16 +1052,13 @@ fi
 %config(noreplace) %{_var}/lib/ldap%{ol_major}/DB_CONFIG
 %{_var}/lib/ldap%{ol_major}/DB_CONFIG.example
 %attr(755,ldap,ldap) %dir /var/run/ldap%{ol_major}
-#%{_datadir}/openldap/*.help
 %{_datadir}/%{name}/gencert.sh
 %{_sbindir}/*
-
 
 %dir %{_libdir}/%{name}
 %if %build_modules && !%build_modpacks
 %{_libdir}/%{name}/*.la
 %{_libdir}/%{name}/*.so*
-#%exclude %{_libdir}/%{name}/*.a
 %endif
 
 %{_mandir}/man5/slap*.5*
@@ -1354,23 +1067,13 @@ fi
 %attr(750,ldap,ldap) %dir /var/log/ldap%{ol_major}
 %config(noreplace) %{_sysconfdir}/logrotate.d/ldap%{ol_major}
 
-%if %db_internal
-#internal version of db
-%{_libdir}/libslapd%{ol_suffix}_db*
-%attr(755,root,root)%{_bindir}/slapd_db*
-%exclude %{_prefix}/docs
-%exclude %{_includedir}/db*.h
-%endif
-
 %doc contrib/slapd-modules/acl/README.acl
 %doc contrib/slapd-modules/addpartial/README.addpartial
 %doc contrib/slapd-modules/allop/README.allop
 %doc contrib/slapd-modules/allowed/README.allowed
 %doc contrib/slapd-modules/autogroup/README.autogroup
 #doc contrib/slapd-modules/dsaschema/README.dsaschema
-%if %mdkversion >= 201010
 %doc contrib/slapd-modules/kinit/README.kinit
-%endif
 %doc contrib/slapd-modules/passwd/README.passwd
 %doc contrib/slapd-modules/passwd/sha2/README.sha2
 %if %build_smbk5pwd
@@ -1381,17 +1084,13 @@ fi
 %endif
 
 %files clients
-%defattr(-,root,root)
 %{_bindir}/ldap*
 %{_mandir}/man1/*
 
 %files -n %libname
-%defattr(-,root,root)
 %{_libdir}/lib*.so.*
 
-
 %files -n %libname-devel
-%defattr(-,root,root)
 %{_libdir}/libl*.so
 %{_includedir}/l*.h
 %{_includedir}/s*.h
@@ -1399,24 +1098,20 @@ fi
 %{_mandir}/man3/*
 
 %files -n %libname-static-devel
-%defattr(-,root,root)
 %{_libdir}/lib*.a
 
 %if %build_modpacks
 %files back_dnssrv
-%defattr(-,root,root)
 %{_libdir}/%{name}/back_dnssrv.la
 %{_libdir}/%{name}/back_dnssrv*.so.*
 %{_libdir}/%{name}/back_dnssrv*.so
 
 %files back_ldap
-%defattr(-,root,root)
 %{_libdir}/%{name}/back_ldap.la
 %{_libdir}/%{name}/back_ldap*.so.*
 %{_libdir}/%{name}/back_ldap*.so
 
 %files back_passwd
-%defattr(-,root,root)
 %{_libdir}/%{name}/back_passwd.la
 %{_libdir}/%{name}/back_passwd*.so.*
 %{_libdir}/%{name}/back_passwd*.so
@@ -1424,7 +1119,6 @@ fi
 
 %if %build_sql && %build_modpacks
 %files back_sql
-%defattr(-,root,root)
 %dir %{_libdir}/%{name}
 %{_libdir}/%{name}/back_sql.la
 %{_libdir}/%{name}/back_sql*.so.*
@@ -1432,11 +1126,9 @@ fi
 %endif
 
 %files tests
-%defattr(-,root,root)
 %{_datadir}/%{name}/tests
 
 %files testprogs
-%defattr(-,root,root)
 %{_bindir}/slapd-*
 %{_bindir}/ldif-filter%{ol_major}
 #
@@ -1444,101 +1136,88 @@ fi
 # - add cron-job to remove transaction logs (bdb)
 
 
-
-
 %changelog
+* Tue May 01 2012 Oden Eriksson <oeriksson@mandriva.com> 2.4.31-1mdv2012.0
++ Revision: 794733
+- avoid nuking the *.la files (needed by openldap per design)
+- 2.4.31
+- disable rpmlint
+- sync with openldap-2.4.29-2.mga2.src.rpm
 
-* Mon Oct 15 2012 buchan <buchan> 2.4.33-1.mga3
-+ Revision: 306387
-- Comply with new group policy (doc package moves to Documentation group)
-- New version 2.4.33
-- Build an internal copy of db-5.1.29 on any distro that doesnt have it or newer
-- Fix building with db_internal on current distros
+* Wed Dec 28 2011 Buchan Milne <bgmilne@mandriva.org> 2.4.28-1
++ Revision: 745869
+- Sync with Mageia:
+ - Drop shared library libtool files, but keep plugin libtool files
+ - Fix errors from 'service ldap recover' etc. due to versioned binaries in db51-utils
+- revert addition of pam-devel BR
+- revert additional macro for disabling tests, --without-test can be used
 
-* Fri Aug 17 2012 buchan <buchan> 2.4.32-1.mga3
-+ Revision: 281766
-- New version 2.4.32
+  + Oden Eriksson <oeriksson@mandriva.com>
+    - 2.4.28
+    - rediffed P4
+    - make it possible to skip the tests
 
-* Tue Jul 31 2012 fwang <fwang> 2.4.31-5.mga3
-+ Revision: 276317
-- rebuild for db-5.3
+* Thu Dec 08 2011 Oden Eriksson <oeriksson@mandriva.com> 2.4.26-4
++ Revision: 739200
+- try to fix the build
+- rebuilt for new unixODBC (second try)
+- rebuilt for new unixODBC
 
-* Wed Jul 25 2012 fwang <fwang> 2.4.31-4.mga3
-+ Revision: 274166
-- rebuild for new db5.2
+* Sun Oct 16 2011 Oden Eriksson <oeriksson@mandriva.com> 2.4.26-2
++ Revision: 704845
+- fix deps (pam-devel)
+- rebuild
 
-* Fri Jul 20 2012 fwang <fwang> 2.4.31-3.mga3
-+ Revision: 272764
-- we are using db 5.2 now
-
-* Fri Jul 20 2012 fwang <fwang> 2.4.31-2.mga3
-+ Revision: 272746
-- rebuild for new db 51
-
-  + buchan <buchan>
-    - Fix awk space pattern in pre/post scripts (back-config case should be considered)
-
-* Thu Jun 21 2012 buchan <buchan> 2.4.31-1.mga3
-+ Revision: 262497
-- New version 2.4.31
-- Merge some changes from/for Mandriva
-
-* Sun Apr 29 2012 sander85 <sander85> 2.4.29-2.mga2
-+ Revision: 234266
-- try to fix build
-
-  + dlucio <dlucio>
-    - fix #5605
-
-* Thu Feb 16 2012 buchan <buchan> 2.4.29-1.mga2
-+ Revision: 209792
-- New version 2.4.29
-- rediff patches (contrib make files, test001 adding slapcat check)
-- Fix packaged test suite (by fixing olcModulePath in all tests, shipping ldif-filter)
-- Fix default config for split cert/key as generated by rpm-helper (bug #1978)
--Update gencert to have similar behaviour, in case rpm-helper is not available
-
-* Tue Dec 20 2011 buchan <buchan> 2.4.28-1.mga2
-+ Revision: 184844
-- Rest of BR on db5-devel only on Mageia > 1
-- On Mageia > 1 only, BR db5-devel
-- 2.4.28
-- Fix errors from 'service ldap recover' etc. due to versioned binaries in db51-utils
-- Revert dropping all libtool archive files, OpenLDAP uses them to load plugins.
-  Instead, only drop the shared library libtool archive files.
-- Revert wrong db5 br that will break builds on other distros
-- Update contrib makefile patch for apr1
-
-* Thu Dec 08 2011 fwang <fwang> 2.4.26-3.mga2
-+ Revision: 178879
-- rebuild for new odbc
-
-* Tue Nov 22 2011 fwang <fwang> 2.4.26-2.mga2
-+ Revision: 170841
-- br db 5
-- drop .la files
-- fix req on db-utils
-- br db5
-- rebuild against db4.8
-
-  + buchan <buchan>
-    - Revert mdv r675900, 'make openldap less restrictibe requiring db', it can break upgrades
+  + Buchan Milne <bgmilne@mandriva.org>
+    - Revert r675900, 'make openldap less restrictibe requiring db', it can break upgrades
     - Add a description of why we have an exact version dependency
-    - Sync with Mdv 2.4.26-1
-    - Hopefully fix db dependencies correctly for all mageia releases
+    - Sync with Mageia
 
-* Wed Apr 20 2011 pterjan <pterjan> 2.4.25-1.mga1
-+ Revision: 88923
-- Update to 2.4.25
-- Sync with mdv
+* Thu Jul 07 2011 Buchan Milne <bgmilne@mandriva.org> 2.4.26-1
++ Revision: 689053
+- New version 2.4.26
+- Allow build-time overrides for some contrib overlays which dont build on older
+  toolchains
 
-* Mon Jan 17 2011 pterjan <pterjan> 2.4.23-4.mga1
-+ Revision: 21712
-- Define a fake mdkversion
+* Mon Jun 20 2011 Oden Eriksson <oeriksson@mandriva.com> 2.4.25-5
++ Revision: 686320
+- avoid pulling 32 bit libraries on 64 bit arch
 
-  + spuhler <spuhler>
-    - imported package openldap
+  + Luis Daniel Lucio Quiroz <dlucio@mandriva.org>
+    - fixes to let compile under 2010.2
 
+* Tue May 17 2011 Luis Daniel Lucio Quiroz <dlucio@mandriva.org> 2.4.25-3
++ Revision: 675900
+- make openldap less restrictibe requiring db
+
+* Wed May 04 2011 Oden Eriksson <oeriksson@mandriva.com> 2.4.25-2
++ Revision: 666954
+- mass rebuild
+
+* Thu Mar 31 2011 Buchan Milne <bgmilne@mandriva.org> 2.4.25-1
++ Revision: 649407
+- Fix contrib test/install with internal berkeley db
+- Dont build kinit overlay on releases without krb5 1.8.x (requires Fast negotiation)
+- Disable test/install of dsaschema, it is broken on 32bit
+- Relax db buildrequire to allow newer releases
+- Fix nssov linking without openldap development libraries installed
+- New version 2.4.25
+-Put all work regarding contrib overlays in a single patch intended for upstream
+ that makes make targets consistent, and adds a sanity-check 'test' target
+- Reload syslog instead of restart, and take care of rsyslog as well
+- Add patch adding install targets to overlays with makefiles but no install target
+- Fix backports to systems with db4
+- Re-order building of contrib overlays
+- Enable nssov
+
+  + Per Øyvind Karlsen <peroyvind@mandriva.org>
+    - build against berkeley db 5.1.25
+
+* Thu Feb 17 2011 Buchan Milne <bgmilne@mandriva.org> 2.4.24-1
++ Revision: 638083
+- New version 2.4.24
+- Rename %%sql to %%build_sql, to prevent crashing rpm
+- Speed up database host backup (Richard Soderberg)
 
 * Thu Dec 02 2010 Buchan Milne <bgmilne@mandriva.org> 2.4.23-4mdv2011.0
 + Revision: 604757
@@ -1767,7 +1446,7 @@ fi
   + Guillaume Rousse <guillomovitch@mandriva.org>
     - fix bash completion
 
-  + Olivier Blin <oblin@mandriva.com>
+  + Olivier Blin <blino@mandriva.org>
     - restore BuildRoot
 
 * Fri Dec 21 2007 Oden Eriksson <oeriksson@mandriva.com> 2.4.7-4mdv2008.1

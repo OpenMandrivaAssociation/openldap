@@ -1,0 +1,567 @@
+#!/bin/bash
+#
+# ldap-common
+#
+# This file contains functions used for recovery of the hot backup of the LDAP 
+# database files on a slave, and rolling forward any transactions, as well
+# as creating hot backups on the master, which are used by the scripts
+# ldap-hot-db-backup and ldap-reinitialise-slave
+#
+# See:
+# - http://www.openldap.org/faq/data/cache/738.html
+# - http://www.sleepycat.com/docs/ref/transapp/archival.html
+# - http://www.sleepycat.com/docs/ref/transapp/recovery.html
+# - http://www.sleepycat.com/docs/ref/transapp/logfile.html 
+# - http://www.sleepycat.com/docs/ref/transapp/hotfail.html
+#
+# License: GPL v2
+# Copyright: Buchan Milne <bgmilne@obsidian.co.za> 2004
+#
+
+dbdirs=(`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2}; /^[:space:]*directory[:space:]*\w*/ {if (db=="bdb"||db=="hdb") print db,$2}' ${SLAPDCONF:-/etc/openldap/slapd.conf}|sed -e 's/[" ]//g'`)
+dbsuffixes=(`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2}; /^[:space:]*suffix[:space:]*\w*/ {if (db=="bdb"||db=="hdb") print db,$2}' ${SLAPDCONF:-/etc/openldap/slapd.conf}|sed -e 's/[" ]//g'`)
+
+#Find db tools, preferring versions prefixed with slapd_
+[ -x /usr/bin/slapd_db_archive ] && DB_ARCHIVE=/usr/bin/slapd_db_archive || DB_ARCHIVE=/usr/bin/db_archive
+[ -x /usr/bin/slapd_db_stat ] && DB_STAT=/usr/bin/slapd_db_stat || DB_STAT=/usr/bin/db_stat
+[ -x /usr/bin/slapd_db_recover ] && DB_RECOVER=/usr/bin/slapd_db_recover || DB_RECOVER=/usr/bin/db_recover
+
+function setcolors() {
+	if [  "$USECOLOURS" == 1 ]
+	then
+		BLUE="\e[0;34m"
+		GREEN="\033[32;01m"
+		YELLOW="\033[33;01m"
+		ORANGE="\e[33m"
+		RED="\033[31;01m"
+		OFF="\033[0m"
+		CYAN="\033[36;01m"
+	fi
+}
+
+function run() {
+	RUNERROR=0
+	if [ "${DEBUG:-0}" == 1 ]
+	then
+		echo -e "${BLUE}Would run: ${OFF}$@"
+	elif [ $VERBOSE -gt 4 ]
+	then
+		if [ -z "$LOGFILE" ]
+		then
+			echo -e "${BLUE}Running: ${OFF}$@${RED}" >&2
+			$@
+			RUNERROR=$?
+			echo -en "${OFF}" >&2
+		else
+			echo -e "Running: $@" >> $LOGFILE
+			$@ >> $LOGFILE 2>&1
+			RUNERROR=$?
+			echo -en "${OFF}"
+		fi
+		RUNERRORS=$[RUNERRORS+RUNERROR]
+	else
+		$@ 2>/dev/null >/dev/null
+		RUNERROR=$?
+		RUNERRORS=$[RUNERRORS+RUNERROR]
+	fi
+	[ $RUNERROR -eq 0 ] || debug 3 "Running '$@' returned $RUNERROR"
+	return $RUNERROR
+}
+
+function debug() {
+# We have the following debug levels:
+# 1 - normal messages - green
+# 2 - warnings - yellow
+# 3 - errors - orange
+# 4 - fatal - red
+# First variable passed is the error level, all others are printed
+	TYPES=(Debug Info Warning Error Fatal)
+	COLOURS=($BLUE $GREEN $YELLOW $ORANGE $RED)
+	SYSLOGLEVELS=(debug info warning err crit)
+	type=$1
+	colour=${COLOURS[$type]}
+	shift
+	print=$[4-type]
+	if [ "$print" -lt "$VERBOSE" ]
+	then
+		if [ -z "$LOGFILE" ]
+		then
+			echo -e "${colour}${TYPES[$type]}: $@${OFF}" >&2
+		else
+			echo -e "${TYPES[$type]}: $@" >> $LOGFILE
+		fi
+	fi
+	if [ "$print" -lt "${SYSLOGVERBOSE:-0}" ]
+	then
+		logger -t `basename $0` -p "${SYSLOGPRIORITY%.*}.${SYSLOGLEVELS[$type]}" "$@"
+	fi
+}
+
+function log {
+	logger -t `basename $0` -p ${SYSLOGPRIORITY:=local2.info} -s "$@"
+}
+
+function fatal() {
+	debug 4 "$@"
+	exit 2
+}
+
+function try () {
+# Try a specified ($1) number of times to run a given command, with a specified
+# delay ($2 in seconds) between attempts
+	TRIES=$1
+	DELAY=$2
+	shift;shift
+	debug 0 "Trying \"$@\" $TRIES times with a delay of $DELAY"
+	TRY=1
+	TRYRETVAL=1
+	while [ 0 -ne "$TRYRETVAL" -a "$TRY" -le "$TRIES" ]
+	do
+		$@
+		TRYRETVAL=$?
+		if [ 0 -ne "$TRYRETVAL" ]
+		then
+			debug 2 "Try $TRY to run \"$@\" failed"
+			sleep $DELAY
+		fi
+		TRY=$[TRY+1]
+	done
+	if [ 2 -lt "$TRY" ]
+	then
+		if [ 0 -eq "$TRYRETVAL" ]
+		then
+			debug 2 "Try $[TRY-1] to run \"$@\" succeeded"
+		else
+			debug 3 "All $TRIES attempts to run \"$@\" failed"
+		fi
+	fi
+	return $TRYRETVAL
+}
+
+getlock() {
+	# Get a lock on the backups. We use the normalised basedn for each
+	# database with spaces removed as the lock file, and place in it
+	# our host name and pid
+	# If the lock file exists, and has our host name, we check to see
+	# if the process that owns it is running. If it is, we exit. If not,
+	# we clobber the lock file.
+	local lockdir remote
+	LOCKDIR=$1
+	case ${LOCKDIR} in
+		ssh*) 
+			lockdir="/${LOCKDIR#*://*/}"
+			remote="${LOCKDIR%$lockdir}"
+			remote="${remote/:\/\// }"
+		;;
+		ldap*) return 0 ;;
+		nfs*) 
+			lockdir=${LOCKDIR#nfs://}
+			nfsdir=${lockdir/\//:/} # host:/path/ format
+			lockdir=`mount |while read -a mountline;do if [ "${mountline[0]}" == "$nfsdir" ];then echo ${mountline[2]};fi;done`
+			if [ -z "$lockdir" ]
+			then
+				run mount $nfsdir || return 1 
+			fi
+			lockdir=`mount |while read -a mountline;do if [ "${mountline[0]}" == "$nfsdir" ];then echo ${mountline[2]};fi;done`
+		;;
+		*) lockdir="${LOCKDIR}";;
+	esac
+	${remote} [ -d ${lockdir} ] || run ${remote} mkdir -p ${lockdir}
+	shift
+	locksweneed=${#dbsuffixes[*]}
+	lockswehave=0
+	for ((dbnum=0;dbnum<${#dbsuffixes[*]};dbnum=$dbnum+1))
+	do
+		dbsuffix=${dbsuffixes[$dbnum]/*:/}
+		[ -z "$dbsuffix" ] && dbsuffix="rootdse"
+		lockfile=${lockdir}/${dbsuffix//[\,\=]/_}
+		if ${remote} [ ! -e ${lockfile} ]
+		then
+			if [ -z "${remote}" ]
+			then 
+				echo "`hostname` $$" > ${lockfile}
+			else
+				${remote} "echo `hostname` $$ >${lockfile}"
+			fi
+		fi
+		if ${remote} [ -e ${lockfile} ]
+		then
+			lock=(`${remote} cat ${lockfile}`)
+			if [ "${lock[0]}" == "`hostname`" ]
+			then
+				debug 1 "Lock file owned by this machine"
+				if [ "${lock[1]}" == "$$" ]
+				then
+					debug 1 "We have the lock (${lockfile}) for ${dbsuffix}"
+					lockswehave=$[lockswehave+1]
+				else
+					debug 2 "Lock file owned by ${lock[*]} present for ${dbsuffix}"
+					if ! ps -p ${lock[1]} >/dev/null
+					then
+						debug 2 "Stale lock file (${lockfile}) found, removing"
+						${remote} rm -f ${lockfile}
+					else
+						debug 3 "Lock file owned by running process"
+					fi
+				fi		
+			else
+				debug 3 "Lock file for ${dbsuffix} owned by host ${lock[0]}"
+			fi
+		fi
+	done
+	if [ "$locksweneed" -eq "$lockswehave" ]
+	then
+		debug 1 "We have ${lockswehave} of ${locksweneed} locks"
+		return 0
+	else
+		debug 3 "We failed to get $[locksweneed-lockswehave] locks"
+		return 1
+	fi
+}
+
+releaselock () {
+	LOCKDIR=$1
+	local lockdir remote nfsdir
+	case ${LOCKDIR} in
+		ssh*) 
+			lockdir="/${LOCKDIR#*://*/}"
+			remote="${LOCKDIR%$lockdir}"
+			remote="${remote/:\/\// }"
+		;;
+		ldap*) return 0 ;;
+		nfs*) 
+			lockdir=${LOCKDIR#nfs://}
+			nfsdir=${lockdir/\//:/} # host:/path/ format
+			lockdir=`mount |while read -a mountline;do if [ "${mountline[0]}" == "$nfsdir" ];then echo ${mountline[2]};fi;done`
+			if [ -z "$lockdir" ]
+			then
+				run mount $nfsdir || return 1
+			fi
+			lockdir=`mount |while read -a mountline;do if [ "${mountline[0]}" == "$nfsdir" ];then echo ${mountline[2]};fi;done`
+			debug 1 "Using lock directory ${nfsdir} mounted at ${lockdir}"
+		;;
+		*) lockdir="${LOCKDIR}";;
+	esac
+
+	shift
+	lockswehave=${#dbsuffixes[*]}
+	for ((dbnum=0;dbnum<${#dbsuffixes[*]};dbnum=$dbnum+1))
+	do
+		dbsuffix=${dbsuffixes[$dbnum]/*:/}
+		[ -z "$dbsuffix" ] && dbsuffix="rootdse"
+		lockfile=${lockdir}/${dbsuffix//[\,\=]/_}
+		if ${remote} [ ! -e ${lockfile} ]
+		then
+			debug 3 "Someone clobbered our lock ${lockfile}"
+			lockswehave=$[lockswehave-1]
+		fi
+		if ${remote} [ -e ${lockfile} ]
+		then
+			lock=(`${remote} cat ${lockfile}`)
+			if [ "${lock[0]}" == "`hostname`" ]
+			then
+				debug 1 "Lock file owned by this machine"
+				if [ "${lock[1]}" == "$$" ]
+				then
+					debug 1 "We have the lock (${lockfile}) for ${dbsuffix}"
+					${remote} rm -f ${lockfile}
+					lockswehave=$[lockswehave-1]
+				else
+					debug 2 "Lock file owned by `cat ${lockfile}` present for ${dbsuffix}"
+					if ! ps -p ${lock[1]} >/dev/null
+					then
+						debug 2 "Stale lock file (${lockfile}) found, removing"
+						${remote} rm -f ${lockfile}
+					else
+						debug 3 "Lock file owned by running process"
+					fi
+				fi		
+			else
+				debug 3 "Lock file owned by host ${lock[0]}"
+			fi
+		fi
+	done
+	if [ -n "${nfsdir}" ]
+	then
+		run umount ${lockdir}
+	fi
+	if [ 0 -eq "$lockswehave" ]
+	then
+		debug 1 "successfully removed all lock files"
+		return 0
+	else
+		debug 3 "We failed to remove $lockswehave locks"
+		return 1
+	fi
+}
+
+backup() {
+
+	for ((dbnum=0;dbnum<${#dbdirs[*]};dbnum=$dbnum+1))
+	do
+		dbdir=${dbdirs[$dbnum]/*:/}
+		dbname="`basename ${dbdirs[$dbnum]/*:/}`"
+		dbsuffix=${dbsuffixes[$dbnum]/*:/}
+		[ -z "$dbsuffix" ] && dbsuffix=rootdse
+		dbbackupdir=${BACKUPTOP}/tmp/${dbsuffix//[\=\,]/_}-$$
+		logdir="`awk '/^set_lg_dir/ {print $2}' ${dbdir}/DB_CONFIG 2>/dev/null`"
+		logdir="${logdir:-$dbdir}"
+		
+		ERRORS=0
+		debug 1 "$0 entering ${dbdir}"
+		if [ ! -d ${dbdir} ]
+		then
+			debug 3 "directory ${dbdir} not accessible"
+			return 1
+		fi
+
+	# Ensure backupdir exists
+	run mkdir -p ${dbbackupdir}
+
+	# Clean old db files from dbbackupdir
+	run rm -f ${dbbackupdir}/*.bdb
+		
+	# 1) Archive inactive log files - if this backup fails,
+	#    we will need them.
+	debug 1 "Archiving transaction log files for ${dbdir}"
+	logarchivedir="${BACKUPTOP}/archived-logs/${dbsuffix//[\,\=]/_}"
+	# ensure it exists
+	run mkdir -p ${logarchivedir}
+	# overwrite old archived log files
+	#run rm -f ${logarchivedir}/log.*
+	for logfile in `$DB_ARCHIVE -h ${dbdir}`
+	do
+		run mv -f ${logdir}/${logfile} ${logarchivedir}
+	done
+	
+	# 2) Run db_archive -s and copy listed active database files
+	#    (but we know all *.bdb files should be active)
+	#    database files must be copied atomically, see
+	#    http://www.sleepycat.com/docs/ref/transapp/reclimit.html
+	#    we will use dd and determine the page size with db_stat
+
+	debug 1 "Creating a backup of database files for ${dbdir} in ${dbbackupdir}"
+	for dbfile in ${dbdir}/*.bdb
+
+	do
+		pagesize=`try 3 2 $DB_STAT -d ${dbfile} -f|awk '/page size/ {print $1}'`
+		ERROR=$?;ERRORS=$[ERRORS+ERROR]
+		run dd if=${dbfile} of=${dbfile/$dbdir/$dbbackupdir} bs=${pagesize} 2>/dev/null
+		run chown ${LDAPUSER:-ldap}:${LDAPGROUP:-ldap} ${dbfile/$dbdir/$dbbackupdir}
+		ERROR=$?;ERRORS=$[ERRORS+ERROR]
+	done
+	
+	# 3) Archive active log files with the database files	
+	debug 1 "Removing old database log files for ${dbdir}"
+	run rm -f ${dbbackupdir}/log.*
+	
+	debug 1 "Updating database log files for ${dbdir}"
+	for logfile in `${DB_ARCHIVE} -h ${dbdir} -l`
+	do
+		run cp -af ${logdir}/${logfile} ${dbbackupdir}
+		ERROR=$?;ERRORS=$[ERRORS+ERROR]
+	done
+
+	# 4) Clean up old archived log files
+	debug 1 "Cleaning up old archived logs from ${logarchivedir}"
+	run find ${logarchivedir} -type f -name 'log.*' -ctime +${KEEP_ARCHIVES_DAYS} -exec rm -f {} \;
+
+	# 5) Report any errors
+	if [ "$ERRORS" == 0 ]
+	then
+		debug 2 "No errors encountered in backup() for ${dbdir}" >&2
+	else
+		debug 3 "Error count for ${dbdir} was $ERRORS" >&2
+		TOTALERRORS=$[TOTALERRORS+ERRORS]
+	fi
+done
+	return $ERRORS	
+}
+
+abort() {
+
+	aborttype="$1"
+	for ((dbnum=0;dbnum<${#dbdirs[*]};dbnum=$dbnum+1))
+	do
+		dbdir=${dbdirs[$dbnum]/*:/}
+		dbname="`basename ${dbdirs[$dbnum]/*:/}`"
+		dbsuffix=${dbsuffixes[$dbnum]/*:/}
+		dbbackupdir=${BACKUPTOP}/${dbsuffix//[\=\,]/_}-$$
+		restoredir=${RESTORETOP}/${dbsuffix//[\=\,]/_}-$$
+		if [ "${aborttype}" == "backup" ]
+		then
+			abortdir="${dbbackupdir}"
+		elif [ "${aborttype}"="restore" ]
+		then
+			abortdir="${restoredir}"
+		else
+			debug 2 "No abort type given"
+			return 2
+		fi
+		
+		debug 1 "$0 entering ${dbdir}"
+
+		# Clean db files from dbbackupdir
+		run rm -f ${abortdir}/{*.bdb,log.*}
+	
+		# Remove backup dir	
+		run rmdir ${abortdir}
+	done
+	
+	return 0
+}
+
+abortbackup () {
+	abort backup
+	return $?
+}
+
+
+restore() {
+	# Copies backups of the database files for each database, and
+	# run database recovery
+	local snapshotdir cpaf nfsdir
+	case ${MASTERBACKUP} in
+		ssh*) 
+			snapshotdir="${MASTERBACKUP#*://}"
+			snapshotdir="${snapshotdir/\//:/}"
+			cpaf="scp -pqCB"
+		;;
+		ldap*) return 0 ;;
+		nfs*) 
+			snapshotdir=${MASTERBACKUP#nfs://}
+			nfsdir=${snapshotdir/\//:/} # host:/path/ format
+			snapshotdir=`mount |while read -a mountline;do if [ "${mountline[0]}" == "$nfsdir" ];then echo ${mountline[2]};fi;done`
+			if [ -z "$snapshotdir" ]
+			then
+				run mount $nfsdir || return 1
+			fi
+			snapshotdir=`mount |while read -a mountline;do if [ "${mountline[0]}" == "$nfsdir" ];then echo ${mountline[2]};fi;done`
+			cpaf="cp -af"
+		;;
+		*) snapshotdir=${MASTERBACKUP}; cpaf="cp -af" ;;
+	esac
+
+	for ((dbnum=0;dbnum<${#dbdirs[*]};dbnum=$dbnum+1))
+	do
+		dbname="`basename ${dbdirs[$dbnum]/*:/}`"
+		dbsuffix=${dbsuffixes[$dbnum]/*:/}
+		dbbackupdir=${BACKUPTOP}/tmp/${dbsuffix//[\=\,]/_}-$$
+		dbsnapshotdir="${snapshotdir}/${dbsuffix//[\,\=]/_}"
+		ERRORS=0
+		restoredir=${RESTORETOP}/${dbsuffix//[\=\,]/_}-$$
+		run mkdir -p ${restoredir}
+
+		# 1) Copy the database files from the active environment
+		# to the backup directory.
+		# Well, in fact the database files we have available are
+		# in the backup directory (on the master) and we want to 
+		# copy them to the real environment (not active)
+		debug 1 "Restoring database and transaction log files from ${dbsnapshotdir} to ${restoredir}"
+		run ${cpaf} ${dbsnapshotdir}/*.bdb ${restoredir}
+		ERROR=$?
+		ERRORS=$[ERRORS+ERROR]
+		# Copy the transaction logs, but we don't want to fail
+		# if log files don't exist
+		debug 1 "Restoring transaction log files from ${dbsnapshotdir} to ${restoredir}"
+		run "${cpaf} ${dbsnapshotdir}/log.* ${restoredir}"
+		
+		# 2) Archive all existing log files - this is done by step 1 of
+		#    ldap-hot-db-backup
+
+		# 3) Move active log files to backup directory - this is done
+		#    by step 3 of ldap-hot-db-backup
+
+		# 3a) (not explicitly in hotfail.htm)
+		#     Update any log files in the live environment that are
+		#     newer than the ones in the snapshot
+
+		#debug 1 "Updating database log files for ${dbdir}"
+		#for logfile in `dirname ${dbdir}`/master/${dbname}/log.*
+		#do
+		#	logfilesnapshot=${dbdir}/`basename $logfile`
+		#	if [ $logfile -nt $logfilesnapshot ]
+		#	then
+		#		run cp -af ${logfile} ${dbdir}
+		#	fi
+		#done
+
+		# 4) Run db_recover -c in the temporary
+		#   restore directory to catastrophically recover the
+		#   copied environment
+
+		debug 1 "Running database recovery for ${restoredir}"
+		run $DB_RECOVER -c -h ${restoredir}
+		ERROR=$?
+		ERRORS=$[ERRORS+ERROR]
+
+		if [ "$ERRORS" == 0 ]
+		then
+			debug 1 "No errors encountered for ${restoredir}" >&2
+		else
+			debug 3 "Error count for ${restoredir} was $ERRORS" >&2
+			TOTALERRORS=$[TOTALERRORS+ERRORS]
+		fi
+		run chown -R ldap:ldap ${restoredir}
+	done
+	if [ -n "${nfsdir}" ]
+	then
+		run umount ${snapshotdir}
+	fi
+	return $TOTALERRORS
+}
+
+switch () {
+	# reinitialise: we have on in restoredir, replace the one in dbdir
+	#               keeping the old dbdir in 
+	# backup: we have db in restoredir, replace the one in backupdir, 
+	#         keeping the old backup in oldbackupdir until it succeeded
+	op="$1"
+	if [ -z "$op" ]; then debug 3 "No operation for switch, pass either backup or restore";return 1;fi
+	for ((dbnum=0;dbnum<${#dbdirs[*]};dbnum=$dbnum+1))
+	do
+		dbsuffix=${dbsuffixes[$dbnum]/*:/}
+		[ -z "$dbsuffix" ] && dbsuffix=rootdse
+		dbdir=${dbdirs[$dbnum]/*:/}
+		dbname="`basename ${dbdirs[$dbnum]/*:/}`"
+		dbbackupdir=${BACKUPTOP}/${dbsuffix//[\=\,]/_}
+		run mkdir -p ${dbbackupdir}
+		if [ "$op" == "backup" ]
+		then
+			restoredir=${BACKUPTOP}/tmp/${dbsuffix//[\=\,]/_}-$$
+			oldbackupdir=${BACKUPTOP}/tmp/${dbsuffix//[\=\,]/_}-old-$$
+			run mkdir -p ${oldbackupdir}
+			# Keep a copy of the last good backup, but
+			# we may not have a set of backups yet, so don't fail
+			run mv -f ${dbbackupdir}/{*.bdb,log.*} ${oldbackupdir}
+			# Move the new restored backup to the backup dir, but
+			# don't fail if logs don't exist
+			run mv -f ${restoredir}/*.bdb ${dbbackupdir} || return 1
+			run mv -f ${restoredir}/log.* ${dbbackupdir}
+			# Remove the copy of the previous good backup
+			run rm -f ${oldbackupdir}/{*.bdb,log.*}
+			run rmdir ${oldbackupdir}			
+		elif [ "$op" == "restore" ]
+		then
+			# We need to deal with transaction logs here
+			logdir="`awk '/^set_lg_dir/ {print $2}' ${dbdir}/DB_CONFIG `"
+			logdir="${logdir:-$dbdir}"
+			restoredir=${RESTORETOP}/${dbsuffix//[\=\,]/_}-$$
+			# Remove old backups of the slave
+			run rm -f ${dbbackupdir}/* || return 1
+			# Backup the existing (working hopefully) slave files
+			run mv -f ${dbdir}/*.bdb ${dbbackupdir} || return 1
+			# The slave may not have transaction logs
+			run mv -f ${logdir}/log.* ${dbbackupdir}
+			# Move the db restored from the master backup to
+			# the database directory
+			run mv -f ${restoredir}/*.bdb ${dbdir} || return 1
+			# There may not have been logs in the backup
+			run mv -f ${restoredir}/log.* ${logdir}
+		fi
+		run rmdir ${restoredir}
+	done
+
+	# If we haven't exited yet, we succeeded
+	return 0
+}

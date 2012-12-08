@@ -1,0 +1,14 @@
+/var/log/ldap/ldap.log {
+    missingok
+    notifempty
+    compress
+    daily
+    rotate 10
+    size=10M
+    sharedscripts
+    postrotate
+	# OpenLDAP logs via syslog, reload syslog if running
+	/etc/init.d/syslog reload >/dev/null 2>/dev/null || :
+	/etc/init.d/rsyslog reload >/dev/null 2>/dev/null || :
+    endscript
+}

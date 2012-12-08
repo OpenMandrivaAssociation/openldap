@@ -1,0 +1,69 @@
+--- ./quickstart.sdf.vendor	2007-09-06 18:35:50.000000000 +0200
++++ ./quickstart.sdf	2007-09-06 18:52:17.000000000 +0200
+@@ -23,6 +23,8 @@
+ services are described in other chapters of the
+ OpenLDAP Administrator's Guide.
+ 
++Note: This section has been modified to reflect differences as applicable
++when using the packages distributed with Mandrivalinux.
+ 
+ .{{S: }}
+ ^{{B: Get the software}}
+@@ -32,6 +34,13 @@
+ ({{URL: http://www.openldap.org/software/download/}}).  It is
+ recommended that new users start with the latest {{release}}.
+ 
++.{{S: }}
++.Note: This step, and the next 6 (up to 7) can be accomplished on Mandrivalinux
++by running:
++.{{EX:urpmi openldap-servers openldap-clients}}
++
++.assuming the versions provided in Mandrivalinux are up-to-date enough
++for your requirements.
+ 
+ .{{S: }}
+ +{{B: Unpack the distribution}}
+@@ -118,6 +127,9 @@
+ should pass.  Some tests, such as the replication test, may
+ be skipped.
+ 
++.{{S: }}
++.Note: Mandrivalinux packages run {{EX:make test}} during the package build.
++
+ 
+ .{{S: }}
+ +{{B:Install the software}}.
+@@ -168,6 +180,10 @@
+ Configuration File}} chapter of this document.  Note that the
+ specified directory must exist prior to starting {{slapd}}(8).
+ 
++.{{S: }}
++.Note: The OpenLDAP packages provided by Mandrivalinux use the configuration
++file {{EX:/etc/openldap/slapd.conf}}, which will by default use the
++directory {{EX:/var/lib/ldap}} for the default database.
+ 
+ .{{S: }}
+ +{{B:Start SLAPD}}.
+@@ -177,6 +193,12 @@
+ 
+ ..{{EX:su root -c /usr/local/libexec/slapd}}
+ 
++.{{S: }}
++.Note: When using the Mandrivalinux OpenLDAP packages, you can start slapd
++with {{EX:service ldap start}} or {{EX:/etc/rc.d/init.d/ldap start}}.
++Optional configuration of this init script may be done in the file
++{{EX:/etc/sysconfig/ldap}}.
++.{{S: }}
+ 
+ . To check to see if the server is running and configured correctly,
+ you can run a search against it with {{ldapsearch}}(1).  By default,
+--- ./install.sdf.vendor	2007-09-06 18:35:49.000000000 +0200
++++ ./install.sdf	2007-09-06 18:52:17.000000000 +0200
+@@ -11,6 +11,7 @@
+ Software itself, making, and finally installing.  The following
+ sections describe this process in detail.
+ 
++!include "vendor.sdf"
+ 
+ H2: Obtaining and Extracting the Software
+ 

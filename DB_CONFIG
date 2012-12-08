@@ -1,0 +1,23 @@
+# This configuration file sets BerkeleyDB options when using the bdb
+# backend, for the database held in the directory where this file resides
+#
+# Please see the OpenLDAP FAQ-O-Matic 
+# (http://www.openldap.org/faq/data/cache/893.html) and the Berkeley DB 
+# documentation (http://www.sleepycat.com/docs/ref/env/db_config.html) 
+# for more information on the settings available
+#
+# Set directory to use for transaction logs:
+#set_lg_dir /var/lib/ldap/logs
+# Set in-memory transaction log cache (2MB)
+set_lg_bsize 2097152
+# Set max transaction log file size, must be >=4* lg_bsize (10MB)
+set_lg_max              10485760
+# Set in-memory database cache
+#set_cachesize   0       1048576        0
+
+
+# For batch imports, disabling transaction logging totally can dramatically
+# improve performance:
+# set_flags DB_TXN_NOT_DURABLE
+
+

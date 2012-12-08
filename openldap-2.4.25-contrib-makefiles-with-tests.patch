@@ -644,7 +644,7 @@ index 0000000..750c7b9
 +	@for i in $?;do \
 +		echo "Testing loading module $$i"; \
 +		echo "modulepath ." > test-slapd.conf; \
-+		echo "moduleload $$i" >> test-slapd.conf; \
++		echo "moduleload $$i ldap/yourhostname@DEFAULTREALM" >> test-slapd.conf; \
 +		$(slapd) -T test -f test-slapd.conf && rm -f test-slapd.conf; \
 +	done
 diff --git a/contrib/slapd-modules/lastbind/Makefile b/contrib/slapd-modules/lastbind/Makefile

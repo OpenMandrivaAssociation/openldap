@@ -1,0 +1,146 @@
+#!/bin/bash
+#
+# ldap-hot-db-backup
+#
+# This script is intended to do periodic hot backups and log file archiving 
+# for each LDAP database.
+#
+# See:
+# - http://www.openldap.org/faq/data/cache/738.html
+# - http://www.sleepycat.com/docs/ref/transapp/archival.html
+# - http://www.sleepycat.com/docs/ref/transapp/recovery.html
+# - http://www.sleepycat.com/docs/ref/transapp/logfile.html 
+# - http://www.sleepycat.com/docs/ref/transapp/hotfail.html
+#
+# Specifically, the steps implemented below are the 3 steps documented in
+# http://www.sleepycat.com/docs/ref/transapp/archival.html
+#
+# License: GPL v2
+# Copyright: Buchan Milne <bgmilne@obsidian.co.za> 2004
+#
+
+WRITELOCKDIR=/var/lib/ldap/lock
+BACKUPTOP=/var/lib/ldap/backup
+SLAPDCONF=/etc/openldap/slapd.conf
+DEBUG=0
+VERBOSE=2
+USECOLOURS=1
+SYSLOGVERBOSE=3
+SYSLOGPRIORITY=local4.info
+RUN_DB_BACKUP=daily
+KEEP_ARCHIVES_DAYS=7
+
+CONFIG_FILE="/etc/sysconfig/ldap"
+[ -e $CONFIG_FILE ] && . $CONFIG_FILE
+
+IAM=$0
+case $IAM in
+	/etc/cron.*)
+	CRONTIME=${IAM#/etc/cron.}
+	CRONTIME=${CRONTIME//\/*/}
+	if [ "$CRONTIME" != "$RUN_DB_BACKUP" ]
+	then exit 0
+	fi
+	;;
+esac
+
+sourced=0
+if [ -f "${0%\/*}/ldap-common" ]
+then
+	source ${0%\/*}/ldap-common && sourced=1
+elif [ -f "/usr/share/openldap/scripts/ldap-common" ]
+then
+	source /usr/share/openldap/scripts/ldap-common && sourced=1
+fi
+if [ "$sourced" -ne "1" ]
+then
+	echo "Failed to source functions, exiting" >&2
+	exit 1
+fi
+
+TOTALERRORS=0
+HELP=0
+
+umask 077
+
+while getopts h,t,v:,c,l:,s:,p: option
+do
+	case "$option" in
+		h) HELP=1;DEBUG=1;VERBOSE=4;SYSLOGVERBOSE=0 ;;
+		t) DEBUG=1;;
+		v) VERBOSE="$OPTARG";;
+		c) USECOLOURS=0;;
+		l) LOGFILE="$OPTARG"; USECOLOURS=0;VERBOSE=4 ;;
+		s) SYSLOGVERBOSE="$OPTARG";;
+		p) SYSLOGPRIORITY="$OPTARG";;
+	esac
+done
+
+setcolors
+
+# Find the preferred tools (slapd_db_* preferred over db_*)
+[ -x "$DB_ARCHIVE" -a -x "$DB_STAT" ] || fatal "No db_archive or db_stat found"
+
+if [ "$HELP" == 1 ]
+then
+cat << EOF
+$0 usage:
+This script is intended to do recovery of the hot backup of the LDAP
+database files on a slave, and roll forward any transactions since the 
+last hot backup
+
+The following options are avaiable:
+-h		This help message
+-t		Test (don't really do anything, just show what would be done)
+-v <level>	Run verbosely (warnings, errors and show what is being done)
+-c		Don't use colours in output
+-l <logfile>	Log (append) operations to log file
+-s <level>	Set verbosity level for logging to syslog (=0 disables)
+-p <priority>	Set syslog priority (ie local2.info) for syslog messages
+
+Without any options, only error messages are shown.
+
+When using coloured output, there are:
+EOF
+debug 1 "Informational messages (verbosity level 4)"
+debug 2 "Warnings (verbosity level 3 and up)"
+debug 3 "Errors (verbosity level 2 and up)"
+debug 4 "Fatal errors (verbosity level 1 and up)"
+exit 0
+fi
+
+#install signal handler:
+
+trap "debug 4 'Aborting backup';releaselock $WRITELOCKDIR;abort backup; fatal 'Backup aborted'" 2 3 4 6 9 11
+
+# main
+debug 2 "Starting backup"
+if backup
+then	
+	debug 2 "Successfully ran backup to temporary directory"
+	if try 5 10 getlock ${WRITELOCKDIR}
+	then
+		debug 1 "Starting switch"
+		if switch "backup"
+		then
+			debug 2 "Switched new backup to good backup successfully"
+			releaselock ${WRITELOCKDIR}
+			debug 2 "Backup run completed successfully"
+		else
+			releaselock ${WRITELOCKDIR}
+			fatal "Failed to switch backup by process $$ and good backups, manual intervention required"
+		fi
+	else
+		releaselock ${WRITELOCKDIR}
+		debug 4 "Could not get locks, cleaning up temporary backup"
+		abort backup 2>/dev/null
+		fatal "Could not get locks, backup abandoned"
+	fi
+else
+	abort backup 2>/dev/null
+	fatal "Backup failed"
+fi	
+
+[ 0 -lt "$TOTALERRORS" ] && debug 2 "Total errors encountered: $TOTALERRORS"
+exit $TOTALERRORS
+

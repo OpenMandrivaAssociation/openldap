@@ -1,0 +1,166 @@
+#!/bin/bash
+#
+# ldap-reinitialise-slave
+#
+# This script is intended to do recovery of the hot backup of the LDAP 
+# database files on a slave, and roll forward any transactions
+#
+# See:
+# - http://www.openldap.org/faq/data/cache/738.html
+# - http://www.sleepycat.com/docs/ref/transapp/archival.html
+# - http://www.sleepycat.com/docs/ref/transapp/recovery.html
+# - http://www.sleepycat.com/docs/ref/transapp/logfile.html 
+# - http://www.sleepycat.com/docs/ref/transapp/hotfail.html
+#
+# Specifically, the steps implemented below are the 3 steps documented in
+# http://www.sleepycat.com/docs/ref/transapp/hotfail.html
+#
+# License: GPL v2
+# Copyright: Buchan Milne <bgmilne@obsidian.co.za> 2004
+#
+
+[ -e /etc/sysconfig/ldap ] && . /etc/sysconfig/ldap
+
+# All the settings below can be set in /etc/sysconfig/ldap, and will
+# take precedence over the defaults below
+# Examples for master URLs:
+#MASTER="ssh://ldapmaster/var/lib/ldap"
+#MASTER="nfs://ldapmaster/var/lib/ldap"
+#MASTER="/var/lib/ldap/master"
+MASTER=${MASTER:=nfs://ldapmaster/var/lib/ldap}
+MASTERBACKUP=${MASTERBACKUP:=$MASTER/backup}
+READLOCKDIR="${READLOCKDIR:=$MASTER/lock}"
+WRITELOCKDIR=${WRITELOCKDIR:=/var/lib/ldap/lock}
+RESTORETOP=${RESTORETOP:=/var/lib/ldap/restore}
+BACKUPTOP=${BACKUPTOP:=/var/lib/ldap/backup}
+SLAPDCONF=${SLAPDCONF:=/etc/openldap/slapd.conf}
+DEBUG=${DEBUG:=0}
+VERBOSE=${VERBOSE:=3}
+USECOLOURS=${USECOLOURS:=1}
+SYSLOGVERBOSE=${SYSLOGVERBOSE:=3}
+SYSLOGPRIORITY=${SYSLOGPRIORITY:=local2.info}
+
+sourced=0
+if [ -r "${0%\/*}/ldap-common" ]
+then
+	. ${0%\/*}/ldap-common && sourced=1
+elif [ -r "/usr/share/openldap/scripts/ldap-common" ]
+then
+	. /usr/share/openldap/scripts/ldap-common && sourced=1
+fi
+if [ "$sourced" -ne "1" ]
+then
+	echo "Failed to source functions, exiting" >&2
+	exit 1
+fi
+
+TOTALERRORS=0
+HELP=0
+
+umask 077
+
+while getopts h,t,v:,c,l: option
+do
+	case "$option" in
+		h) HELP=1;DEBUG=1;VERBOSE=4;SYSLOGVERBOSE=0 ;;
+		t) DEBUG=1;;
+		v) VERBOSE="$OPTARG";;
+		c) USECOLOURS=0;;
+		l) LOGFILE="$OPTARG"; USECOLOURS=0;VERBOSE=4 ;;
+		s) SYSLOGVERBOSE="$OPTARG";;
+		p) SYSLOGPRIORITY="$OPTARG";;
+	esac
+done
+
+setcolors
+
+if [ "$HELP" == 1 ]
+then
+cat << EOF
+$0 usage:
+This script is intended to do recovery of the hot backup of the LDAP
+database files on a slave, and roll forward any transactions since the 
+last hot backup
+
+The following options are avaiable:
+-h		This help message
+-t		Test (don't really do anything, just show what would be done)
+-v <level>	Run verbosely (warnings, errors and show what is being done)
+-c		Don't use colours in output
+-l <logfile>	Log (append) operations to log file
+-s <level>	Set verbosity level for logging to syslog (=0 disables)
+-p <priority>	Set syslog priority (ie local2.info) for syslog messages
+
+Without any options, only error messages are shown.
+
+When using coloured output, there are:
+EOF
+debug 1 "Informational messages (verbosity level 4)"
+debug 2 "Warnings (verbosity level 3 and up)"
+debug 3 "Errors (verbosity level 2 and up)"
+debug 4 "Fatal errors (verbosity level 1 and up)"
+exit 0
+fi
+
+# Find the preferred tools (slapd_db_* preferred over db_*)
+[ -x "$DB_RECOVER" ] || fatal "no db_recover ($DB_RECOVER) found, exiting"
+
+trap "debug 4 'Aborting reinitialisation';releaselock $WRITELOCKDIR; abort backup; releaselock $READLOCKDIR;/etc/rc.d/init.d/ldap restart;fatal 'Reinitialisation aborted'" 2 3 4 6 9 11
+
+if try 5 10 getlock ${READLOCKDIR}
+then
+	if restore
+	then
+		releaselock ${READLOCKDIR}
+		/etc/rc.d/init.d/ldap status >/dev/null 2>/dev/null
+		STOPRETVAL=$?
+		if [ "$STOPRETVAL" -ne 3 ]
+		then
+			debug 1 "Stopping ldap"
+			/etc/rc.d/init.d/ldap stop >/dev/null 2>/dev/null
+			sleep 2
+		fi
+		debug 1 "Checking ldap status"
+		/etc/rc.d/init.d/ldap status >/dev/null 2>/dev/null
+		STOPRETVAL=$?
+		if [ "$STOPRETVAL" -eq 3 ]
+			debug 1 "LDAP is stopped"
+		then
+			if try 5 10 getlock ${WRITELOCKDIR}
+			then
+				if switch "restore"
+				then
+					releaselock ${WRITELOCKDIR}
+					try 2 2 run /etc/rc.d/init.d/ldap start
+				else
+					fatal "Switch failed, cowardly refusing to start ldap or release locks"
+				fi
+			else
+				debug 3 "Could not get write lock, releasing all locks we hold"
+				releaselock ${WRITELOCKDIR} 2>/dev/null
+				debug 3 "Could not get write lock, removing temporary directory"
+				debug 3 "Could not get write lock, starting ldap"
+				try 2 2 run /etc/rc.d/init.d/ldap start
+				abort restore 2>/dev/null
+				fatal "Could not get write lock, aborting"
+			fi
+				
+		else
+			debug 3 "Could not stop ldap, removing temporary directory"
+			abort restore 2>/dev/null
+			fatal "Could not stop ldap, aborting"
+		fi
+	else
+		debug 3 "Restore failed, removing temporary directory"
+		abort restore 2>/dev/null
+		releaselock ${READLOCKDIR} 2>/dev/null
+		fatal "Restore failed, aborting"
+	fi
+else
+	releaselock ${READLOCKDIR}
+	fatal "Could not get locks, restore abandoned"
+fi
+
+[ 0 -lt "$TOTALERRORS" ] && debug 2 "Total errors encountered: $TOTALERRORS"
+exit $TOTALERRORS
+

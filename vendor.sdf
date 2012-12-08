@@ -1,0 +1,118 @@
+
+!block organisations; data
+Name|Long|Jump
+Mandriva|Mandrivalinux|http://www.mandrivalinux.org
+!endblock
+
+H2: Notes for Mandriva users
+ 
+If you are reading this version of the OpenLDAP Administrator's
+Guide, it means you have installed the Mandriva OpenLDAP documentation
+package.
+
+H3: File locations
+
+The {{ORG:Mandriva}} packages install OpenLDAP with a prefix of /usr, 
+so the daemons are availble in {{F:/usr/sbin}}, client utilities
+in /usr/bin, configuration files under {{F:/etc/openldap}}, libraries
+in {{F:/usr/lib}} (or /usr/lib64 on 64bit platforms), and plugins
+for slapd under {{F:/usr/lib/openldap}}. The packages are built with
+all useable backends and overlays (many as loadable modules), so
+it should normally not be necessary to build from source.
+
+The OpenLDAP test suite that is shipped with the source code is also shipped,
+ready-to-run, in the openldap-tests package. To run the test suite (to confirm
+that all tests passed, investigate some of the example configurations that are
+shipped, etc.), simply install openldap-tests (with {{EX:urpmi openldap-tests}})
+then (as any user):
+
+.{{EX:cd /usr/share/openldap/tests}}
+.{{EX:make tests}}
+
+H3: Upgrading between major versions of OpenLDAP when upgrading the distribution
+
+Upgrades between major versions should usually proceed cleanly without
+user intervention, and work as follows:
+* Before package installation, for each database defined in 
+{{F:/etc/openldap/slapd.conf}} and any first level included files
+* If no file named {{F:rpm-migrate-to-<OPENLDAP-MAJOR-VERSION>.ldif-imported}}
+or {{F:rpm-migrate-to-<OPENLDAP-MAJOR-VERSION>.ldif-import-failed}} exists in the
+database directory
+* the database will be dumped (using {{EX:slapcat}}) to the file 
+rpm-migrate-to-<OPENLDAP-MAJOR-VERSION>.ldif in the database directory
+* After package installation, for each database defined in
+{{F:/etc/openldap/slapd.conf}} or any first level included files
+* If a file with the name {{F:rpm-migrate-to-<OPENLDAP-MAJOR-VERSION>.ldif}}
+ exists, it will be imported using {{EX:slapadd}}.
+* If the import succeeds, this file will be renamed to 
+{{F:rpm-migrate-to-<OPENLDAP-MAJOR-VERSION>.ldif-imported}}
+* If the import fails, the file will be renamed to 
+{{F:rpm-migrate-to-<OPENLDAP-MAJOR-VERSION>.ldif-import-failed}}
+
+Thus, under normal circumstances, each database should be migrated successfully,
+leaving a file (which could be quite large) named 
+ {{F:rpm-migrate-to-<OPENLDAP-MAJOR-VERSION>.ldif-imported}} in each database
+directory. If you are happy that migration worked successfully and you wish to
+reclaim the disk space, make this file an empty file (ie {{EX: > rpm-migrate-to-<OPENLDAP-MAJOR-VERSION>.ldif-imported}}). If import fails, you 
+should be left with complete LDIF for each database.
+
+If the export of the database fails, then you may need to use a compatability
+package matching your previous OpenLDAP package to export your data. This
+will require some work (mainly copying your usual slapd.conf to the 
+configuration directory for the compatability version), so even though upgrades
+should work cleanly, it is recommended to stop slapd and take an ldif backup
+manually for each database before upgrading.
+
+If you would prefer to handle all database upgrading yourself, you can disable
+automatic migration by setting {{EX:AUTOMIGRATE=no}} in your 
+{{F:/etc/sysconfig/ldap}}
+
+H3: Other versions of OpenLDAP
+
+The Mandriva OpenLDAP packages are usually up-to-date at the time of
+version freeze in the distribution. The distribution security update policy
+means that updates for OpenLDAP packages will only be provided
+in the event of a security vulnerability, and will only address the
+specific vulnerability (new versions will not be provided, the original
+version will be patched).
+
+As a service to users who prefer to run more up-to-date versions of
+OpenLDAP software, the maintainer often provides newer (ie versions not 
+yet marked as stable) versions in the contrib repository that can be 
+installed in parallel, and usually attempts to ensure that the packages 
+rebuild correctly (maintaining their status as they were on the original
+distribution) on older distributions. However, these packages cannot be
+supported by Mandriva.
+
+Compatability packages are kept in contrib for at least one release after 
+they have been replaced in main by a new version (to ensure that users for whom 
+automatic migration failed can export their data with a slapcat compatible with 
+their data. The BerkeleyDB version that the package used when in main is maintained,
+even if this means retaining an internal copy.
+
+!block table; align=Center; coltags="N,N,N,N"; title="OpenLDAP versions (db4 version) in Mandriva releases"
+Release			Main						Newer				Compatability
+Mandriva 2008.0		2.3.38 (built-in db4.2.42.5+memleak patch)	2.4.5				N/A
+Mandriva 2007.1		2.3.34 (system db4.2.52.4+patch)		N/A				2.2.27(system db4.2.42.2)
+Mandriva 2007.0		2.3.27 (system db4.2.52.4+patch			N/A				2.2.27(system db4.2.52.2)
+Mandriva 2006		2.3.6 (system db4.2.52.4+patch)			N/A				2.2.27(system db4.2.52.2), 2.1.30(internal db4.2.52.2)
+Mandriva 2005LE		2.2.23 (system db4.2.52.2)			N/A				2.1.30(internal db4.2.52.2)
+Mandrake 10.1		2.1.30 (system db4.2.52.2)			2.2.18 (system db4.2.42.2)	N/A
+Mandrake 10.0		2.1.25 (internal db4.2.52.2)			N/A				N/A
+!endblock
+
+For instance, on Mandriva 2008.0, OpenLDAP 2.4.5 may be installed by running:
+.{{EX:urpmi openldap2.4-servers}}
+
+All the files/commands/man pages and OpenLDAP-specific directories 
+(ie /usr/lib/openldap, /etc/openldap) are suffixed with the major version
+of the software, for instance the {{EX:slapd}} daemon would be called
+{{EX:slapd2.2}} and would use the configuration file /etc/openldap2.2/slapd.conf
+and plugins from /usr/lib/openldap2.2).
+
+H3: Skip Ahead
+
+The rest of this chapter may be skipped if the version you require is available
+and can be installed with {{EX:urpmi}} or the Software Installer. Continue on
+to {{SECT:Configuring slapd}}.
+
