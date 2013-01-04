@@ -1138,6 +1138,7 @@ fi
 
 %changelog
 * Fri Jan  4 2013 Per Øyvind Karlsen <peroyvind@mandriva.org> 2.4.33-2
+- remove outdated autofs schema
 - fix awk scriptlet
 
 * Tue May 01 2012 Oden Eriksson <oeriksson@mandriva.com> 2.4.31-1mdv2012.0
