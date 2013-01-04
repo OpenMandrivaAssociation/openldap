@@ -84,7 +84,7 @@
 Summary:	LDAP servers and sample clients
 Name:		%{pkg_name}%{ol_major}
 Version:	2.4.33
-Release:	1
+Release:	2
 License:	Artistic
 Group:		System/Servers
 URL:		http://www.openldap.org
@@ -812,7 +812,7 @@ MIGRATE=`%{_sbindir}/slapd%{ol_major} -VV 2>&1|while read a b c d e;do case $d i
 if [ "$1" -ne 1 -a -e "$SLAPDCONF" -a "$MIGRATE" != "nomigrate" ]
 then 
 #`awk '/^[:space:]*directory[:space:]*\w*/ {print $2}' /etc/%{name}/slapd.conf`
-dbs=`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2;suf="";dir=""}; /^[:space:]*suffix[:space:]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[:space:]*directory[:space:]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
 do
 	dbdir=${db/:*/}
@@ -852,7 +852,7 @@ LDAPGROUP=ldap
 SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
 if [ -e "$SLAPDCONF" ] 
 then
-dbs=`awk 'BEGIN {OFS=":"} /[:space:]*^database[:space:]*\w*/ {db=$2;suf="";dir=""}; /^[:space:]*suffix[:space:]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[:space:]*directory[:space:]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
 do	
 	dbdir=${db/:*/}
@@ -1137,6 +1137,9 @@ fi
 
 
 %changelog
+* Fri Jan  4 2013 Per Øyvind Karlsen <peroyvind@mandriva.org> 2.4.33-2
+- fix awk scriptlet
+
 * Tue May 01 2012 Oden Eriksson <oeriksson@mandriva.com> 2.4.31-1mdv2012.0
 + Revision: 794733
 - avoid nuking the *.la files (needed by openldap per design)
