@@ -92,7 +92,7 @@ BuildRequires:	groff
 BuildRequires:	rpm-helper
 BuildRequires:	perl
 BuildRequires:	db-devel >= %{dbver}
-%{?_with_kerberos:BuildRequires:	krb5-devel}
+BuildRequires:	krb5-devel
 %{?_with_cyrussasl:BuildRequires:	libsasl-devel}
 BuildRequires:	libltdl-devel
 BuildRequires:	tcp_wrappers-devel
@@ -257,7 +257,6 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 	--enable-ipv6 \
 	--enable-local \
 	%{?_with_cyrussasl} %{?_without_cyrussasl} \
-	%{?_with_kerberos} %{?_without_kerberos} \
 	--with-threads \
 	--with-tls \
 	--enable-slapd \
@@ -266,7 +265,6 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 	--enable-crypt \
 	--enable-lmpasswd \
 	%{!?_with_gssapi:--without-gssapi} \
-	%{?_with_kerberos:--enable-kpasswd} \
 	%{?_with_cyrussasl:--enable-spasswd} \
 %if %build_modules
 	--enable-modules \
