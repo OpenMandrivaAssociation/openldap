@@ -1,6 +1,3 @@
-%define _build_pkgcheck_set %{nil}
-%define _build_pkgcheck_srpm %{nil}
-
 #defaults
 %define build_modules 1
 %define build_nssov 1
@@ -52,10 +49,11 @@ License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
 Source0:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{name}-%{version}.tgz
+Source1:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{name}-%{version}.sha1
 Source12:	openldap-guide-2.4.tar.bz2
 Source13:	README-openldap2.4.mdv
-Source1: 	ldap.init
-Source2: 	openldap.sysconfig
+Source14: 	ldap.init
+Source15: 	openldap.sysconfig
 Source19:	gencert.sh
 Source20:	ldap.logrotate
 Source21:	slapd.conf
@@ -82,31 +80,31 @@ Patch15:	openldap-cldap.patch
 # schema patch
 Patch46:	openldap-2.0.21-schema.patch
 Patch47:	openldap-2.4.12-change-dyngroup-schema.patch
-
 Patch53:	openldap-ntlm.patch
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
 
-%{?_with_cyrussasl:BuildRequires:	libsasl-devel}
-%{?_with_kerberos:BuildRequires:	krb5-devel}
-BuildRequires:	rpm-helper >= 0.23
-BuildRequires:	openssl-devel
+BuildRequires:	chrpath
+# for make test:
+BuildRequires:	diffutils
+BuildRequires:	groff
+BuildRequires:	rpm-helper
 BuildRequires:	perl
+BuildRequires:	db-devel >= %{dbver}
+%{?_with_kerberos:BuildRequires:	krb5-devel}
+%{?_with_cyrussasl:BuildRequires:	libsasl-devel}
+BuildRequires:	libltdl-devel
+BuildRequires:	tcp_wrappers-devel
 %if %build_sql
 BuildRequires:	unixODBC-devel
 %endif
 %if %back_perl
 BuildRequires:	perl-devel
 %endif
-BuildRequires:	db52-devel >= %{dbver}
-BuildRequires:	ncurses-devel >= 5.0
-BuildRequires:	tcp_wrappers-devel
-BuildRequires:	libltdl-devel
-BuildRequires:	krb5-devel
-BuildRequires:	groff
-# for make test:
-BuildRequires:	diffutils
+BuildRequires:	pkgconfig(ncurses)
+BuildRequires:	pkgconfig(openssl)
+
 Requires:	shadow-utils
 Requires:	setup
 
@@ -208,21 +206,10 @@ also be useful as load generators etc.
 
 %prep
 %setup -q
+%apply_patches
 
-%patch0 -p1 -b .config
 perl -pi -e 's/^(#define\s+DEFAULT_SLURPD_REPLICA_DIR.*)ldap(.*)/${1}ldap${2}/' servers/slurpd/slurp.h
 perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
-%patch1 -p1 -b .module
-%patch2 -p1 -b .smbk5paths
-%patch3 -p1 -b .smbonly
-%patch4 -p1 -b .contribmake
-
-%patch15 -p1 -b .cldap
-
-%patch46 -p1 -b .mdk
-%patch47 -p1 -b .dyngroup
-# FIXME
-%patch53 -p1 -b .ntlm
 
 # patches from CVS
 perl -pi -e 's/testrun/\${TESTDIR}/g' tests/scripts/test024-unique
@@ -233,15 +220,9 @@ cp %{SOURCE13} README.mdk
 # test049 not ready for not writing to testdir ...
 mv tests/scripts/{,broken}test049*
 
-%patch5 -p1
-%patch6 -p1
 chmod a+rx tests/scripts/test054*
-#aclocal
-#perl -pi -e 's/^(AC_PREREQ.2.5)/${1}7/g' configure.in
-#autoconf
 
 %build
-#disable icecream:
 PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 %serverbuild
 
@@ -249,18 +230,19 @@ PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 CFLAGS=`echo $CFLAGS|sed -e 's|-fPIE||g'`
 CXXFLAGS=`echo $CXXFLAGS|sed -e 's|-fPIE||g'`
 
-#unset CONFIGURE_TOP
-
 # don't choose db4.3 even if it is available
 export ol_cv_db_db_4_dot_3=no
+
 # try and miss linuxthreads, so we get a threading lib on glibc2.4:
 export ol_cv_header_linux_threads=no
+
 #rh only:
 export CPPFLAGS="-I%{_prefix}/kerberos/include $CPPFLAGS"
 export LDFLAGS="-L%{_prefix}/kerberos/%{_lib} $LDFLAGS"
 %if %{?openldap_fd_setsize:1}%{!?openldap_fd_setsize:0}
 CPPFLAGS="$CPPFLAGS -DOPENLDAP_FD_SETSIZE=%{openldap_fd_setsize}"
 %endif
+
 # FIXME glibc 2.8 breakage, this is not the correct fix, see
 # http://www.openldap.org/its/index.cgi/Build?id=5464;selectid=5464
 CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
@@ -319,6 +301,7 @@ export LIBTOOL=`pwd`/libtool
 
 if [ -d /usr/kerberos/%{_lib} ]; then export LIBRARY_PATH=/usr/kerberos/%{_lib}; fi
 perl -pi -e 's/radius.la//g' contrib/slapd-modules/passwd/Makefile
+
 #acl broken
 for i in addpartial allop allowed autogroup cloak denyop dsaschema dupent  \
     kinit \
@@ -334,16 +317,6 @@ do
     make -C contrib/slapd-modules/$i libdir=%{_libdir} moduledir=%{_libdir}/%{name}
 done
 
-#proxyOld, needs some work ...
-#CC=g++ make -C contrib/slapd-modules/proxyOld
-
-#samba4, not useful yet?
-
-# http://wiki.mandriva.com/en/2009-underlinking-overlinking
-#LDFLAGS=${LDFLAGS//-Wl,--no-undefined/}
-# Not shipped yet: comp_match,proxyOld
-
-
 %check
 %if %{!?_without_test:1}%{?_without_test:0}
 # Use a pseudo-random number between 9000 and 10000 as base port for slapd in tests
@@ -352,8 +325,6 @@ make -C tests %{!?tests:test}%{?tests:%tests}
 %endif
 
 %install
-#disable icecream:
-#PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 export DONT_GPRINTIFY=1
 export DONT_REMOVE_LIBTOOL_FILES=1
 for i in acl addpartial allop allowed autogroup \
@@ -394,8 +365,6 @@ cp contrib/slapd-modules/lastbind/slapo-lastbind.5 %{buildroot}/%{_mandir}/man5
 cp contrib/slapd-modules/lastmod/slapo-lastmod.5 %{buildroot}/%{_mandir}/man5
 cp contrib/slapd-modules/nops/slapo-nops.5 %{buildroot}/%{_mandir}/man5
 
-#cp contrib/slapd-modules/*/*.so %{buildroot}/%{_libdir}/%{name}
-
 #smbk5pwd skipped, installed as smbpwd above
 #dsaschema broken on 32bit
 for i in addpartial allop allowed autogroup cloak denyop dupent \
@@ -415,6 +384,7 @@ done
 rm -f %{buildroot}/%{_libdir}/%{name}/kerberos.a
 rm -f %{buildroot}/%{_libdir}/%{name}/netscape.a
 rm -f %{buildroot}/%{_libdir}/%{name}/sha2.a
+
 #compat symlinks, DONT REMOVE
 ln -s netscape.so %{buildroot}/%{_libdir}/%{name}/pw-netscape.so
 ln -s kerberos.so %{buildroot}/%{_libdir}/%{name}/pw-kerberos.so
@@ -422,9 +392,7 @@ ln -s kerberos.so %{buildroot}/%{_libdir}/%{name}/pw-kerberos.so
 # We already had ldapns.schema in extra-schemas
 rm -f %{buildroot}/%{_sysconfdir}/%{name}/schema/ldapns.schema
 
-
 # try and ship the tests such that they will run properly
-
 install -d %{buildroot}/%{_datadir}/%{name}/tests
 cp -a tests/{data,scripts,Makefile,run} %{buildroot}/%{_datadir}/%{name}/tests
 ln -s %{_datadir}/%{name}/schema %{buildroot}/%{_datadir}/%{name}/tests
@@ -448,20 +416,17 @@ install -m755 tests/progs/.libs/slapd-* tests/progs/.libs/ldif-filter %{buildroo
 perl -pi -e "s| -L../liblber/.libs||g" %{buildroot}%{_libdir}/libldap.la
 
 perl -pi -e  "s,-L$RPM_BUILD_DIR\S+%{_libdir},,g" %{buildroot}/%{_libdir}/lib*.la
-#sed -i -e "s|-L$RPM_BUILD_DIR/%{name}-%{version}/db-instroot/%{_libdir}||g" %{buildroot}/%{_libdir}/*la
-#%{buildroot}/%{_libdir}/%{name}/*.la 
 
 ### Init scripts
 install -d %{buildroot}%{_initrddir}
-install -m 755 %{SOURCE1} %{buildroot}%{_initrddir}/ldap
+install -m 755 %{SOURCE14} %{buildroot}%{_initrddir}/ldap
 perl -pi -e 's,%{_bindir}/db_,%{_bindir}/%{dbutilsprefix},g' %{buildroot}%{_initrddir}/ldap
 
 install -d %{buildroot}%{_sysconfdir}/sysconfig
-install -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/sysconfig/ldap
+install -m 644 %{SOURCE15} %{buildroot}%{_sysconfdir}/sysconfig/ldap
 
 install -m 640 %{SOURCE21} %{SOURCE23} %{SOURCE24} %{buildroot}%{_sysconfdir}/%{name}
 install -d %{buildroot}/%{_sysconfdir}/%{name}/slapd.d
-#install -m640 -o ldap -g ldap -d /etc/openldap/slapd.d
 
 ### repository dir
 install -d %{buildroot}%{_var}/lib/ldap
@@ -513,11 +478,8 @@ install -m 700 -d %{buildroot}/var/log/ldap
 install -d %{buildroot}%{_sysconfdir}/logrotate.d
 install -m 644 %{SOURCE20} %{buildroot}%{_sysconfdir}/logrotate.d/ldap
 
-
 # get the buildroot out of the man pages
 perl -pi -e "s|%{buildroot}||g" %{buildroot}%{_mandir}/*/*.*
-
-#mkdir -p %{buildroot}%{_sysconfdir}/ssl/%{name}
 
 #Fix binary names and config paths in scripts/configs
 perl -pi -e 's,/%{name}/,/%{name}/,g;s,(/ldap\w?)\b,${1},g;s,(%{_bindir}/slapd_db_\w+),${1},g;s,(%{_sbindir}/sl(apd|urpd|aptest))\b,${1},g;s/ldap-common/ldap-common/g;s,ldap.pem,ldap.pem,g;s,/usr/lib,%{_libdir},g' %{buildroot}/{%{_sysconfdir}/%{name}/slapd.conf,%{_initrddir}/ldap,%{_datadir}/%{name}/scripts/*}
@@ -534,7 +496,6 @@ install -m 644 servers/slapd/*.h  %{buildroot}%{_includedir}/%{name}/slapd
 install -d -m 755 %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
 install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
 
-# Dont drop all  .la files, as OpenLDAP uses them for loading plugins
 rm -f %{buildroot}/%{_libdir}/*.la
 rm -f %{buildroot}%{_libdir}/%{name}/*.la
 
@@ -721,7 +682,6 @@ for i in slapd.conf slapd.access.conf ; do
 done
 popd > /dev/null
 
-
 %_post_service ldap
 
 # nscd reset
@@ -842,7 +802,4 @@ fi
 %files testprogs
 %{_bindir}/slapd-*
 %{_bindir}/ldif-filter
-#
-# Todo:
-# - add cron-job to remove transaction logs (bdb)
 
