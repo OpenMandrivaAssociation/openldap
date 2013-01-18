@@ -85,7 +85,6 @@ Patch53:	openldap-ntlm.patch
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
 
-BuildRequires:	chrpath
 # for make test:
 BuildRequires:	diffutils
 BuildRequires:	groff
