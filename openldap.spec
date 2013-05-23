@@ -44,7 +44,7 @@
 Summary:	LDAP servers and sample clients
 Name:		openldap
 Version:	2.4.33
-Release:	5
+Release:	6
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
@@ -92,7 +92,7 @@ BuildRequires:	rpm-helper
 BuildRequires:	perl
 BuildRequires:	db52-devel >= %{dbver}
 BuildRequires:	krb5-devel
-%{?_with_cyrussasl:BuildRequires:	libsasl-devel}
+%{?_with_cyrussasl:BuildRequires:	sasl-devel}
 BuildRequires:	libltdl-devel
 BuildRequires:	tcp_wrappers-devel
 %if %build_sql
