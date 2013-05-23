@@ -138,8 +138,9 @@ This package contains the OpenLDAP server, slapd (LDAP server), additional
 backends, configuration files, schema definitions required for operation, and 
 database maintenance tools
 
-This server package was compiled with support for the %{?_with_gdbm:gdbm}%{!?_with_gdbm:berkeley}
-database library.
+This server package was compiled with support for the following database 
+library: %{?_with_gdbm:gdbm}%{!?_with_gdbm:berkeley}
+
 
 %package clients
 Summary:	OpenLDAP clients and related files
