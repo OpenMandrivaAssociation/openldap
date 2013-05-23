@@ -30,7 +30,7 @@
 # to make backport binary compatibles
 # excepted for very old systems, where we use bundled db
 %define dbver	5.2.0
-%define dbutils	db-utils
+%define dbutils	db52-utils
 %define dbutilsprefix db52_
 
 %global clientbin	ldapadd,ldapcompare,ldapdelete,ldapmodify,ldapmodrdn,ldappasswd,ldapsearch,ldapwhoami,ldapexop
@@ -44,7 +44,7 @@
 Summary:	LDAP servers and sample clients
 Name:		openldap
 Version:	2.4.33
-Release:	4
+Release:	5
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
@@ -90,7 +90,7 @@ BuildRequires:	diffutils
 BuildRequires:	groff
 BuildRequires:	rpm-helper
 BuildRequires:	perl
-BuildRequires:	db-devel >= %{dbver}
+BuildRequires:	db52-devel >= %{dbver}
 BuildRequires:	krb5-devel
 %{?_with_cyrussasl:BuildRequires:	libsasl-devel}
 BuildRequires:	libltdl-devel
