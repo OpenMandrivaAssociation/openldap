@@ -20,9 +20,9 @@
 %{!?_with_gdbm: %global db_conv gdbm}
 %{?_without_sql: %global build_sql 0}
 
-%define api	2.4
-%define major	2
-%define fname	ldap
+%define api 2.4
+%define major 2
+%define fname ldap
 %define libname %mklibname %{fname} %{api} %{major}
 %define devname %mklibname %{fname} %{api} -d
 
@@ -44,7 +44,7 @@
 Summary:	LDAP servers and sample clients
 Name:		openldap
 Version:	2.4.33
-Release:	6
+Release:	7
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
