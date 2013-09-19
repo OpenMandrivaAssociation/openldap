@@ -44,7 +44,7 @@
 Summary:	LDAP servers and sample clients
 Name:		openldap
 Version:	2.4.33
-Release:	7
+Release:	8
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
@@ -130,6 +130,7 @@ Requires(pre,post):	%{dbutils}
 Requires:	%{dbutils} >= %{dbver}
 Requires:	%{name}-extra-schemas >= 1.3-7
 Requires(pre):	%{name}-extra-schemas >= 1.3-7
+Requires(post):	openssl
 
 %description servers
 OpenLDAP Servers
