@@ -209,6 +209,11 @@ also be useful as load generators etc.
 %setup -q
 %apply_patches
 
+for f in config.guess config.sub ; do
+        test -f /usr/share/libtool/config/$f || continue
+        find . -type f -name $f -exec cp /usr/share/libtool/config/$f \{\} \;
+done
+
 perl -pi -e 's/^(#define\s+DEFAULT_SLURPD_REPLICA_DIR.*)ldap(.*)/${1}ldap${2}/' servers/slurpd/slurp.h
 perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 
