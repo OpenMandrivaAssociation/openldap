@@ -1,21 +1,13 @@
-diff -p -up openldap-2.4.18/contrib/slapd-modules/smbk5pwd/Makefile.smbk5paths openldap-2.4.18/contrib/slapd-modules/smbk5pwd/Makefile
---- openldap-2.4.18/contrib/slapd-modules/smbk5pwd/Makefile.smbk5paths	2009-09-01 23:53:30.000000000 +0100
-+++ openldap-2.4.18/contrib/slapd-modules/smbk5pwd/Makefile	2009-09-07 13:15:42.000000000 +0100
-@@ -19,14 +19,14 @@ CC=gcc
- # Omit DO_KRB5, DO_SAMBA or DO_SHADOW if you don't want to support it.
- DEFS=-DDO_KRB5 -DDO_SAMBA -DDO_SHADOW
+--- openldap-2.4.39/contrib/slapd-modules/smbk5pwd/Makefile.0002~	2014-02-16 12:49:36.944331909 +0100
++++ openldap-2.4.39/contrib/slapd-modules/smbk5pwd/Makefile	2014-02-16 12:50:31.892330522 +0100
+@@ -21,8 +21,8 @@ LDAP_LIB = $(LDAP_BUILD)/libraries/libld
+ SSL_INC = 
+ SSL_LIB = -lcrypto
  
--HEIMDAL_INC=-I/usr/heimdal/include
-+HEIMDAL_INC=-I/usr/include/heimdal
- SSL_INC=
- LDAP_INC=-I../../../include -I../../../servers/slapd
- INCS=$(LDAP_INC) $(HEIMDAL_INC) $(SSL_INC)
+-HEIMDAL_INC = -I/usr/heimdal/include
+-HEIMDAL_LIB = -L/usr/heimdal/lib -lkrb5 -lkadm5srv
++HEIMDAL_INC = -I/usr/include/heimdal
++HEIMDAL_LIB = -L$(libdir)/heimdal -lkrb5 -lkadm5srv
  
--HEIMDAL_LIB=-L/usr/heimdal/lib -lkrb5 -lkadm5srv
-+HEIMDAL_LIB=-L$(libdir)/heimdal -lkrb5 -lkadm5srv
- SSL_LIB=-lcrypto
--LDAP_LIB=-lldap_r -llber
-+LDAP_LIB=-L../../../libraries/libldap_r/ -L../../../libraries/liblber/ -lldap_r -llber
- LIBS=$(LDAP_LIB) $(HEIMDAL_LIB) $(SSL_LIB)
- 
- prefix=/usr/local
+ LIBTOOL = $(LDAP_BUILD)/libtool
+ CC = gcc
