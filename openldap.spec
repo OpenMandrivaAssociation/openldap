@@ -44,7 +44,7 @@
 Summary:	LDAP servers and sample clients
 Name:		openldap
 Version:	2.4.39
-Release:	3
+Release:	4
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
@@ -507,6 +507,10 @@ install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{nam
 rm -f %{buildroot}/%{_libdir}/*.la
 rm -f %{buildroot}%{_libdir}/%{name}/*.la
 
+%multiarch_includes %{buildroot}%{_includedir}/openldap/include/ldap_config.h
+%multiarch_includes %{buildroot}%{_includedir}/openldap/include/portable.h
+
+
 %pre servers
 %_pre_useradd ldap %{_var}/lib/ldap /bin/false
 %_pre_groupadd ldap ldap
@@ -799,9 +803,13 @@ fi
 
 %files -n %{devname}
 %{_libdir}/libl*.so
-%{_includedir}/l*.h
-%{_includedir}/s*.h
-%{_includedir}/%{name}
+%dir %{multiarch_includedir}/%{name}
+%{multiarch_includedir}/%{name}/include/ldap_config.h
+%{multiarch_includedir}/%{name}/include/portable.h
+
+#%{_includedir}/l*.h
+#%{_includedir}/s*.h
+#%{_includedir}/%{name}
 %{_mandir}/man3/*
 
 %files tests
