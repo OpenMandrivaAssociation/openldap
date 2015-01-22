@@ -508,6 +508,7 @@ rm -f %{buildroot}/%{_libdir}/*.la
 rm -f %{buildroot}%{_libdir}/%{name}/*.la
 
 %multiarch_includes %{buildroot}%{_includedir}/openldap/include/ldap_config.h
+
 %multiarch_includes %{buildroot}%{_includedir}/openldap/include/portable.h
 
 
