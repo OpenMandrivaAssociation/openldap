@@ -808,6 +808,8 @@ fi
 %dir %{multiarch_includedir}/%{name}/include
 %{multiarch_includedir}/%{name}/include/ldap_config.h
 %{multiarch_includedir}/%{name}/include/portable.h
+%{multiarch_includedir}/%{name}/include/ldap_cdefs.h
+%{multiarch_includedir}/%{name}/include/ldap_features.h
 
 %{_includedir}/l*.h
 %{_includedir}/s*.h
