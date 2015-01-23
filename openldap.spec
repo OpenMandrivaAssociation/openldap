@@ -805,12 +805,13 @@ fi
 %files -n %{devname}
 %{_libdir}/libl*.so
 %dir %{multiarch_includedir}/%{name}
+%dir %{multiarch_includedir}/%{name}/include
 %{multiarch_includedir}/%{name}/include/ldap_config.h
 %{multiarch_includedir}/%{name}/include/portable.h
 
-#%{_includedir}/l*.h
-#%{_includedir}/s*.h
-#%{_includedir}/%{name}
+%{_includedir}/l*.h
+%{_includedir}/s*.h
+%{_includedir}/%{name}
 %{_mandir}/man3/*
 
 %files tests
