@@ -2,6 +2,7 @@
 %define build_modules 1
 %define build_nssov 1
 %define build_smbk5pwd 1
+%bcond_with check
 %global build_sql 1
 %global back_perl 0
 
@@ -324,7 +325,7 @@ do
 done
 
 %check
-%if %{!?_without_test:1}%{?_without_test:0}
+%if %{with check}
 # Use a pseudo-random number between 9000 and 10000 as base port for slapd in tests
 export SLAPD_BASEPORT=$[9000+RANDOM%1000]
 make -C tests %{!?tests:test}%{?tests:%tests}
