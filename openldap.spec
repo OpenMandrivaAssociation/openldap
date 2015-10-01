@@ -43,8 +43,8 @@
 
 Summary:	LDAP servers and sample clients
 Name:		openldap
-Version:	2.4.39
-Release:	7
+Version:	2.4.42
+Release:	1
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
@@ -229,6 +229,7 @@ mv tests/scripts/{,broken}test048*
 mv tests/scripts/{,broken}test049*
 
 chmod a+rx tests/scripts/test054*
+AUTOMAKE=/bin/true autoreconf -fiv
 
 %build
 PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
@@ -255,7 +256,7 @@ CPPFLAGS="$CPPFLAGS -DOPENLDAP_FD_SETSIZE=%{openldap_fd_setsize}"
 # http://www.openldap.org/its/index.cgi/Build?id=5464;selectid=5464
 CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 
-%configure2_5x \
+%configure \
 	--disable-static \
 	--with-subdir=%{name} \
 	--localstatedir=/var/run/ldap \

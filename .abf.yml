@@ -1,3 +1,4 @@
 sources:
   openldap-guide-2.4.tar.bz2: 16c37e98688cdca60e34afe71aa08e4f9b3e73f8
-  openldap-2.4.39.tgz: 2b8e8401214867c361f7212e7058f95118b5bd6c
+  openldap-2.4.42.tgz: ec03e061bfdb2e6a90827855cf77a72cb3f89cf4
+  openldap-2.4.42.sha1: 7c34e372151755da1a57c847a9e9d8e40127dce3
