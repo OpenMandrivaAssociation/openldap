@@ -104,6 +104,7 @@ BuildRequires:	perl-devel
 %endif
 BuildRequires:	pkgconfig(ncurses)
 BuildRequires:	pkgconfig(openssl)
+BuildRequires:	pkgconfig(com_err)
 
 Requires:	shadow-utils
 Requires:	setup
@@ -136,11 +137,11 @@ Requires(post):	openssl
 %description servers
 OpenLDAP Servers
 
-This package contains the OpenLDAP server, slapd (LDAP server), additional 
-backends, configuration files, schema definitions required for operation, and 
+This package contains the OpenLDAP server, slapd (LDAP server), additional
+backends, configuration files, schema definitions required for operation, and
 database maintenance tools
 
-This server package was compiled with support for the following database 
+This server package was compiled with support for the following database
 library: %{?_with_gdbm:gdbm}%{!?_with_gdbm:berkeley}
 
 
@@ -302,8 +303,8 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 # (oe) amd64 fix
 perl -pi -e "s|^AC_CFLAGS.*|AC_CFLAGS = $CFLAGS -fPIC|g" libraries/librewrite/Makefile
 
-%make depend 
-%make 
+%make depend
+%make
 export LIBTOOL=`pwd`/libtool
 
 if [ -d /usr/kerberos/%{_lib} ]; then export LIBRARY_PATH=/usr/kerberos/%{_lib}; fi
@@ -342,19 +343,19 @@ for i in acl addpartial allop allowed autogroup \
 %if %{build_smbk5pwd}
 	smbk5pwd \
 %endif
-	passwd 
+	passwd
 do
 [ -e contrib/slapd-modules/$i/README ] && cp -af contrib/slapd-modules/$i/README{,.$i}
 done
 cp contrib/slapd-modules/passwd/sha2/README{,.sha2}
 rm -Rf %{buildroot}
 
-%makeinstall_std STRIP="" 
+%makeinstall_std STRIP=""
 
 %if %{build_smbk5pwd}
 cp -a contrib/slapd-modules/smbk5pwd/.libs/smbk5pwd.so* %{buildroot}/%{_libdir}/%{name}
 for i in %{buildroot}/%{_libdir}/%{name}/smbk5pwd*
-do 
+do
   if [ -L ${i} ]
   then
 	newlink=`readlink $i|sed -e 's/k5//g'`
@@ -381,7 +382,7 @@ for i in addpartial allop allowed autogroup cloak denyop dupent \
 	nssov \
 %endif
 	passwd passwd/sha2 trace
-do 
+do
 	if grep -qE '^test:' contrib/slapd-modules/$i/Makefile; then
 		if make -C contrib/slapd-modules/$i test; then
 			make DESTDIR=%{buildroot} mandir=%{_mandir} moduledir=%{_libdir}/%{name} schemadir=%{_sysconfdir}/%{name}/schema -C contrib/slapd-modules/$i install
@@ -398,7 +399,7 @@ rm -f %{buildroot}/%{_libdir}/%{name}/sha2.a
 #compat symlinks, DONT REMOVE
 ln -s netscape.so %{buildroot}/%{_libdir}/%{name}/pw-netscape.so
 ln -s kerberos.so %{buildroot}/%{_libdir}/%{name}/pw-kerberos.so
-	
+
 # We already had ldapns.schema in extra-schemas
 rm -f %{buildroot}/%{_sysconfdir}/%{name}/schema/ldapns.schema
 
@@ -450,9 +451,9 @@ install -d %{buildroot}%{_var}/run/ldap
 ### Server defaults
 echo "localhost" > %{buildroot}%{_sysconfdir}/%{name}/ldapserver
 
-### we don't need the default files 
-rm -f %{buildroot}/etc/%{name}/*.default 
-rm -f %{buildroot}/etc/%{name}/schema/*.default 
+### we don't need the default files
+rm -f %{buildroot}/etc/%{name}/*.default
+rm -f %{buildroot}/etc/%{name}/schema/*.default
 
 
 ### Standard schemas should not be changed by users
@@ -496,7 +497,7 @@ perl -pi -e 's,/%{name}/,/%{name}/,g;s,(/ldap\w?)\b,${1},g;s,(%{_bindir}/slapd_d
 perl -pi -e 's/ldap/ldap/' %{buildroot}/%{_sysconfdir}/logrotate.d/ldap
 
 mv %{buildroot}/var/run/ldap/openldap-data/DB_CONFIG.example %{buildroot}/%{_var}/lib/ldap/
- 
+
 # install private headers so as to build additional overlays later
 install -d -m 755 %{buildroot}%{_includedir}/%{name}/{include,slapd}
 install -m 644 include/*.h  %{buildroot}%{_includedir}/%{name}/include
@@ -530,7 +531,7 @@ SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
 MIGRATE=`%{_sbindir}/slapd -VV 2>&1|while read a b c d e;do case $d in (2.4.*) echo nomigrate;;(2.*) echo migrate;;esac;done`
 
 if [ "$1" -ne 1 -a -e "$SLAPDCONF" -a "$MIGRATE" != "nomigrate" ]
-then 
+then
 #`awk '/^[:space:]*directory[:space:]*\w*/ {print $2}' /etc/%{name}/slapd.conf`
 dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
@@ -563,18 +564,18 @@ fi
 %post servers
 SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?`
 [ $SLAPD_STATUS -eq 1 ] && service ldap stop
-# bgmilne: part 2 of gdbm->dbb conversion for data created with 
+# bgmilne: part 2 of gdbm->dbb conversion for data created with
 # original package for 9.1:
 dbnum=1
 LDAPUSER=ldap
 LDAPGROUP=ldap
 [ -e "/etc/sysconfig/%{name}" ] && . "/etc/sysconfig/%{name}"
 SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
-if [ -e "$SLAPDCONF" ] 
+if [ -e "$SLAPDCONF" ]
 then
 dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
 for db in $dbs
-do	
+do
 	dbdir=${db/:*/}
 	dbsuffix=${db/*:/}
 	ldiffile="rpm-migrate-to-%{api}.ldif"
@@ -582,12 +583,12 @@ do
 	then
 		echo -e "\n\nImporting $dbsuffix"
 		if [ -e ${dbdir}/ldap-rpm-backup ]
-		then 
+		then
 			echo "Warning: Old ldap backup data in ${dbdir}/ldap-rpm-backup"
 			echo "These files will be removed"
 			rm -f ${dbdir}/ldap-rpm-backup/*
 		fi
-	
+
 		echo "Moving the database files fom ${dbdir} to ${dbdir}/ldap-rpm-backup"
 		mkdir -p ${dbdir}/ldap-rpm-backup
 		mv -f ${dbdir}/{*.bdb,*.gdbm,*.dbb,log.*,__db*} ${dbdir}/ldap-rpm-backup 2>/dev/null
@@ -627,12 +628,12 @@ perl -pi -e "s|^.*SLAPDSYSLOGLOCALUSER.*|SLAPDSYSLOGLOCALUSER=\"local4\"|" \
 if [ -f %{_sysconfdir}/syslog.conf -a $1 -eq 1 ]
 then
 	# clean syslog
-	perl -pi -e "s|^.*ldap.*\n||g" %{_sysconfdir}/syslog.conf 
+	perl -pi -e "s|^.*ldap.*\n||g" %{_sysconfdir}/syslog.conf
 
 	# probe free local-users
 	cntlog=""
 	for log in 7 6 5 3 2 1 0 4
-	do 
+	do
 		grep -vE "local${log}[^;]*\.none" %{_sysconfdir}/syslog.conf|grep -q local${log} || cntlog="${log}"
 	done
 
@@ -644,14 +645,14 @@ then
 
 		# reset syslog daemon
 		if [ -f /var/lock/subsys/syslog ]; then
-				service syslog restart  > /dev/null 2>/dev/null || : 
+				service syslog restart  > /dev/null 2>/dev/null || :
 		elif [ -f /var/lock/subsys/rsyslog ]; then
 			service rsyslog restart > /dev/null 2>/dev/null || :
 		fi
 	else
 		echo "I can't set syslog local-user!"
 	fi
-		
+
 	# set syslog local-user in /etc/sysconfig/ldap
 	perl -pi -e "s|^.*SLAPDSYSLOGLOCALUSER.*|SLAPDSYSLOGLOCALUSER=\"LOCAL${cntlog}\"|g" %{_sysconfdir}/sysconfig/ldap
 
@@ -696,7 +697,7 @@ popd > /dev/null
 
 # nscd reset
 if [ -f /var/lock/subsys/nscd ]; then
-	service nscd restart  > /dev/null 2>/dev/null || : 
+	service nscd restart  > /dev/null 2>/dev/null || :
 fi
 
 
@@ -707,13 +708,13 @@ fi
 %if %{?_preun_syslogdel:1}%{?!_preun_syslogdel:0}
 %_preun_syslogdel
 %else
-if [ $1 = 0 ]; then 
-	# remove ldap entry 
-	perl -pi -e "s|^.*ldap.*\n||g" %{_sysconfdir}/syslog.conf 
+if [ $1 = 0 ]; then
+	# remove ldap entry
+	perl -pi -e "s|^.*ldap.*\n||g" %{_sysconfdir}/syslog.conf
 
 	# reset syslog daemon
 	if [ -f /var/lock/subsys/syslog ]; then
-		service syslog restart  > /dev/null 2>/dev/null || : 
+		service syslog restart  > /dev/null 2>/dev/null || :
 	elif [ -f /var/lock/subsys/rsyslog ]; then
 		service rsyslog restart > /dev/null 2>/dev/null || :
 	fi
@@ -725,7 +726,7 @@ fi
 %triggerpostun -- openldap-clients < 2.1.25-5mdk
 # We may have openldap client configuration in /etc/ldap.conf
 # which now needs to be in /etc/openldap/ldap.conf
-if [ -f /etc/ldap.conf ] 
+if [ -f /etc/ldap.conf ]
 then
 	mv -f /etc/%{name}/ldap.conf /etc/%{name}/ldap.conf.rpmfix
 	cp -af /etc/ldap.conf /etc/%{name}/ldap.conf
@@ -739,7 +740,7 @@ fi
 %doc README.mdk
 
 %files doc
-%doc ANNOUNCEMENT CHANGES COPYRIGHT LICENSE README 
+%doc ANNOUNCEMENT CHANGES COPYRIGHT LICENSE README
 %doc doc/rfc doc/drafts
 %doc %{_docdir}/%{name}-guide
 
