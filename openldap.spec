@@ -30,22 +30,22 @@
 # we want to use the default db version for each release, so as
 # to make backport binary compatibles
 # excepted for very old systems, where we use bundled db
-%define dbver	5.2.0
-%define dbutils	db52-utils
+%define dbver 5.2.0
+%define dbutils db52-utils
 %define dbutilsprefix db52_
 
-%global clientbin	ldapadd,ldapcompare,ldapdelete,ldapmodify,ldapmodrdn,ldappasswd,ldapsearch,ldapwhoami,ldapexop
-%global serverbin	slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester,ldif-filter
-%define serversbin	slapadd,slapcat,slapd,slapdn,slapindex,slappasswd,slaptest,slurpd,slapacl,slapauth
+%global clientbin ldapadd,ldapcompare,ldapdelete,ldapmodify,ldapmodrdn,ldappasswd,ldapsearch,ldapwhoami,ldapexop
+%global serverbin slapd-addel,slapd-bind,slapd-modify,slapd-modrdn,slapd-read,slapd-search,slapd-tester,ldif-filter
+%define serversbin slapadd,slapcat,slapd,slapdn,slapindex,slappasswd,slaptest,slurpd,slapacl,slapauth
 
 #localstatedir is passed directly to configure, and we want it to be /var/lib
 #define _localstatedir %{_var}/run
-%define	_libexecdir	%{_sbindir}
+%define _libexecdir %{_sbindir}
 
 Summary:	LDAP servers and sample clients
 Name:		openldap
 Version:	2.4.45
-Release:	1
+Release:	2
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
@@ -105,8 +105,6 @@ BuildRequires:	perl-devel
 BuildRequires:	pkgconfig(ncurses)
 BuildRequires:	pkgconfig(openssl)
 BuildRequires:	pkgconfig(com_err)
-
-Requires:	shadow-utils
 Requires:	setup
 
 %description
@@ -122,8 +120,8 @@ Install openldap if you need LDAP applications and tools.
 %package servers
 Summary:	OpenLDAP servers and related files
 Group:		System/Servers
-Requires(pre):	rpm-helper >= 0.23 coreutils shadow-utils
-Requires(pre,post):	%{dbutils}
+Requires(pre,post,preun):	rpm-helper >= 0.23
+Requires(pre,post,preun):	%{dbutils}
 # slapd checks at startup if the library version matches exactly what it
 # was compiled against, so we cant allow newer versions, e.g.:
 #bdb_back_initialize: BDB library version mismatch: expected Berkeley DB 4.8.26: (December 30, 2009), got Berkeley DB 4.8.30: (March 25, 2011)
@@ -135,7 +133,7 @@ Requires(pre):	%{name}-extra-schemas >= 1.3-7
 Requires(post):	openssl
 
 %description servers
-OpenLDAP Servers
+OpenLDAP Servers.
 
 This package contains the OpenLDAP server, slapd (LDAP server), additional
 backends, configuration files, schema definitions required for operation, and
@@ -303,8 +301,8 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 # (oe) amd64 fix
 perl -pi -e "s|^AC_CFLAGS.*|AC_CFLAGS = $CFLAGS -fPIC|g" libraries/librewrite/Makefile
 
-%make depend
-%make
+%make_build depend
+%make_build
 export LIBTOOL=`pwd`/libtool
 
 if [ -d /usr/kerberos/%{_lib} ]; then export LIBRARY_PATH=/usr/kerberos/%{_lib}; fi
@@ -350,7 +348,7 @@ done
 cp contrib/slapd-modules/passwd/sha2/README{,.sha2}
 rm -Rf %{buildroot}
 
-%makeinstall_std STRIP=""
+%make_install STRIP=""
 
 %if %{build_smbk5pwd}
 cp -a contrib/slapd-modules/smbk5pwd/.libs/smbk5pwd.so* %{buildroot}/%{_libdir}/%{name}
