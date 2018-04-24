@@ -44,8 +44,8 @@
 
 Summary:	LDAP servers and sample clients
 Name:		openldap
-Version:	2.4.45
-Release:	2
+Version:	2.4.46
+Release:	1
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
@@ -281,8 +281,9 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 	--enable-rewrite \
 	--enable-rlookups \
 	--enable-wrappers \
-	--enable-bdb=yes \
+	--enable-bdb=no \
 	--enable-hdb=yes \
+	--enable-lmdb=yes \
 	--enable-ndb=no \
 	--enable-backends=mod \
 %if %back_perl
