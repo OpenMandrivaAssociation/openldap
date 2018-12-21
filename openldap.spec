@@ -45,7 +45,7 @@
 Summary:	LDAP servers and sample clients
 Name:		openldap
 Version:	2.4.44
-Release:	1
+Release:	1.1
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
@@ -85,6 +85,10 @@ Patch53:	openldap-ntlm.patch
 #patches in CVS
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
+
+# http://git.yoctoproject.org/cgit/cgit.cgi/meta-cloud-services/tree/recipes-support/openldap/openldap-2.4.39/libldap-symbol-versions.patch?h=master
+# https://github.com/ValveSoftware/csgo-osx-linux/issues/1925
+Patch54:	libldap-symbol-versions.patch
 
 # for make test:
 BuildRequires:	diffutils
