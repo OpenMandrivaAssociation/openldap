@@ -50,7 +50,6 @@ License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
 Source0:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{name}-%{version}.tgz
-Source1:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{name}-%{version}.sha1
 Source12:	openldap-guide-2.4.tar.bz2
 Source13:	README-openldap2.4.mdv
 Source14: 	ldap.init
