@@ -52,7 +52,7 @@ Url:		http://www.openldap.org
 Source0:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{name}-%{version}.tgz
 Source12:	openldap-guide-2.4.tar.bz2
 Source13:	README-openldap2.4.mdv
-Source14: 	ldap.init
+Source14: 	ldap.service
 Source15: 	openldap.sysconfig
 Source19:	gencert.sh
 Source20:	ldap.logrotate
@@ -63,10 +63,27 @@ Source24:	slapd.access.conf
 Source25:	ldap-hot-db-backup
 Source26:	ldap-reinitialise-slave
 Source27:	ldap-common
+
+Source28:	coreschemas.conf
+Source29:	extraschemas.conf
+
+# Extended Schema
+Source50:	printer.schema
+Source51:	evoldap.schema
+Source52:	urpmi.schema
+Source53:	sudo.schema
 Source54:	mull.schema
+Source55:	evolutionperson.schema
+Source56:	dnszone.schema
+Source57:	calendar.schema
+
 Source100:	openldap-2.4-admin-guide-add-vendor-doc.patch
 Source101:	vendor.sdf
 Source102:	vendor-standalone.sdf
+
+Source500:	ldap.tmpfiles.d
+Source502:	ldap.sysusers.d
+
 
 Patch0:		openldap-2.3.4-config.patch
 Patch1:		openldap-2.0.7-module.patch
@@ -119,6 +136,58 @@ sample clients (in the -clients package). The openldap binary package includes
 only configuration files used by the libraries.
 
 Install openldap if you need LDAP applications and tools.
+
+
+%package config
+Summary:	OpenLDAP confdir
+Group:		Databases
+
+%description config
+OpenLDAP confdir
+This package prepares directory structure for server configuration files and
+for openldap-schema-* packages, the OpenLDAP schema file collection.
+# --------------------------------------------------------------------------- #
+
+%package schemas
+Summary:	OpenLDAP schema files
+Group:		Databases
+Requires(pre): %{name}-config
+Recommends:	openldap-schemas-heimdal
+Recommends:	openldap-schemas-krb5
+Recommends:	openldap-schemas-samba
+Recommends:	openldap-schemas-dhcp
+Recommends:	openldap-schemas-freeradius
+Recommends:	openldap-schemas-nfs
+Recommends:	openldap-schemas-webmin
+Recommends:	openldap-schemas-pureftpd
+Recommends:	openldap-schemas-quota
+Recommends:	openldap-schemas-sendmail
+Recommends:	openldap-schemas-evoldap
+Recommends:	openldap-schemas-urpmi
+Recommends:	openldap-schemas-extra
+
+%description schemas
+OpenLDAP schema files
+This package contains standard set of OpenLDAP schema files. Supplementary
+schema definitions (Heimdal, krb5, etc.) may be added up to this collection,
+see 'dnf search openldap-schemas' for full list.
+# --------------------------------------------------------------------------- #
+%package schemas-extra
+# A successor to "openldap-extra-schemas" package which was not updated for a
+# number of years. This one should be kept as thin as possible as it can only be
+# updated manually. Use of openldap-schemas-%{name} packages is preferrable.
+# IMPORTANT: it should not obsolete and trigger removal of "openldap-extra-schemas"
+# at list till 2016 as removal of "openldap-extra-schemas" could ruin someones's
+# production environment.
+Summary:	OpenLDAP extra schema files
+Group:		Databases
+Requires(pre): %{name}-config
+
+%description schemas-extra
+OpenLDAP extra schema files
+A set of extra OpenLDAP schema files,
+see 'urpmq -aS openldap-schemas' for full list.
+# --------------------------------------------------------------------------- #
 
 %package servers
 Summary:	OpenLDAP servers and related files
@@ -401,9 +470,6 @@ rm -f %{buildroot}/%{_libdir}/%{name}/sha2.a
 ln -s netscape.so %{buildroot}/%{_libdir}/%{name}/pw-netscape.so
 ln -s kerberos.so %{buildroot}/%{_libdir}/%{name}/pw-kerberos.so
 
-# We already had ldapns.schema in extra-schemas
-rm -f %{buildroot}/%{_sysconfdir}/%{name}/schema/ldapns.schema
-
 # try and ship the tests such that they will run properly
 install -d %{buildroot}/%{_datadir}/%{name}/tests
 cp -a tests/{data,scripts,Makefile,run} %{buildroot}/%{_datadir}/%{name}/tests
@@ -430,15 +496,17 @@ perl -pi -e "s| -L../liblber/.libs||g" %{buildroot}%{_libdir}/libldap.la
 perl -pi -e  "s,-L$RPM_BUILD_DIR\S+%{_libdir},,g" %{buildroot}/%{_libdir}/lib*.la
 
 ### Init scripts
-install -d %{buildroot}%{_initrddir}
-install -m 755 %{SOURCE14} %{buildroot}%{_initrddir}/ldap
-perl -pi -e 's,%{_bindir}/db_,%{_bindir}/%{dbutilsprefix},g' %{buildroot}%{_initrddir}/ldap
+install -d %{buildroot}%{_unitdir}
+install -m644 %{SOURCE14} %{buildroot}%{_unitdir}/ldap.service
 
 install -d %{buildroot}%{_sysconfdir}/sysconfig
 install -m 644 %{SOURCE15} %{buildroot}%{_sysconfdir}/sysconfig/ldap
 
 install -m 640 %{SOURCE21} %{SOURCE23} %{SOURCE24} %{buildroot}%{_sysconfdir}/%{name}
+
 install -d %{buildroot}/%{_sysconfdir}/%{name}/slapd.d
+install -m 640 %{SOURCE28} %{buildroot}%{_sysconfdir}/%{name}/slapd.d/coreschemas.conf
+install -m 640 %{SOURCE29} %{buildroot}%{_sysconfdir}/%{name}/slapd.d/extraschemas.conf
 
 ### repository dir
 install -d %{buildroot}%{_var}/lib/ldap
@@ -453,13 +521,29 @@ install -d %{buildroot}%{_var}/run/ldap
 echo "localhost" > %{buildroot}%{_sysconfdir}/%{name}/ldapserver
 
 ### we don't need the default files
-rm -f %{buildroot}/etc/%{name}/*.default
-rm -f %{buildroot}/etc/%{name}/schema/*.default
+rm -f %{buildroot}/etc/%{name}/*.default 
+rm -f %{buildroot}/etc/%{name}/*.example 
+rm -f %{buildroot}/etc/%{name}/schema/*.default 
+rm -f %{buildroot}/etc/%{name}/slapd.ldif
 
-
-### Standard schemas should not be changed by users
+### Previous versions of this package held core schema files in {_datadir}/{name}/schema/. We have to keep
+### these files in place at least till 2016 so that upgrades do not break existing installations.
 install -d %{buildroot}%{_datadir}/%{name}/schema
-mv -f %{buildroot}%{_sysconfdir}/%{name}/schema/* %{buildroot}%{_datadir}/%{name}/schema/
+cp %{buildroot}%{_sysconfdir}/%{name}/schema/*.{schema,ldif} %{buildroot}%{_datadir}/%{name}/schema/
+# This one is an exception as it conflicts with 'openldap-extra-schemas'
+mv %{buildroot}%{_sysconfdir}/%{name}/schema/README %{buildroot}%{_sysconfdir}/%{name}/schema/README.coreschemas
+
+### install additional schemas
+
+install -m 644 %{SOURCE54} %{buildroot}%{_datadir}/%{name}/schema/
+install -m 644 %{SOURCE50} %{buildroot}%{_sysconfdir}/%{name}/schema/
+install -m 644 %{SOURCE51} %{buildroot}%{_sysconfdir}/%{name}/schema/
+install -m 644 %{SOURCE52} %{buildroot}%{_sysconfdir}/%{name}/schema/
+install -m 644 %{SOURCE53} %{buildroot}%{_sysconfdir}/%{name}/schema/
+install -m 644 %{SOURCE54} %{buildroot}%{_sysconfdir}/%{name}/schema/
+install -m 644 %{SOURCE55} %{buildroot}%{_sysconfdir}/%{name}/schema/
+install -m 644 %{SOURCE56} %{buildroot}%{_sysconfdir}/%{name}/schema/
+install -m 644 %{SOURCE57} %{buildroot}%{_sysconfdir}/%{name}/schema/
 
 ### install additional schemas
 install -m 644 %{SOURCE54} %{buildroot}%{_datadir}/%{name}/schema/
@@ -474,8 +558,8 @@ done
 perl -pi -e 's,%{_bindir}/db_,%{_bindir}/%{dbutilsprefix},g' %{buildroot}/%{_datadir}/%{name}/scripts/ldap-common
 
 ### create local.schema
-echo "# This is a good place to put your schema definitions " > %{buildroot}%{_sysconfdir}/%{name}/schema/local.schema
-chmod 644 %{buildroot}%{_sysconfdir}/%{name}/schema/local.schema
+# echo "# This is a good place to put your schema definitions " > %{buildroot}%{_sysconfdir}/%{name}/schema/local.schema
+# chmod 644 %{buildroot}%{_sysconfdir}/%{name}/schema/local.schema
 
 ### Guide
 mkdir -p %{buildroot}/%{_docdir}/
@@ -495,6 +579,7 @@ perl -pi -e "s|%{buildroot}||g" %{buildroot}%{_mandir}/*/*.*
 
 #Fix binary names and config paths in scripts/configs
 perl -pi -e 's,/%{name}/,/%{name}/,g;s,(/ldap\w?)\b,${1},g;s,(%{_bindir}/slapd_db_\w+),${1},g;s,(%{_sbindir}/sl(apd|urpd|aptest))\b,${1},g;s/ldap-common/ldap-common/g;s,ldap.pem,ldap.pem,g;s,/usr/lib,%{_libdir},g' %{buildroot}/{%{_sysconfdir}/%{name}/slapd.conf,%{_initrddir}/ldap,%{_datadir}/%{name}/scripts/*}
+
 perl -pi -e 's/ldap/ldap/' %{buildroot}/%{_sysconfdir}/logrotate.d/ldap
 
 mv %{buildroot}/var/run/ldap/openldap-data/DB_CONFIG.example %{buildroot}/%{_var}/lib/ldap/
@@ -510,6 +595,11 @@ install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{nam
 
 rm -f %{buildroot}/%{_libdir}/*.la
 rm -f %{buildroot}%{_libdir}/%{name}/*.la
+
+# tmpfiles
+install -m 0644 %{SOURCE500} -D %{buildroot}%{_tmpfilesdir}/ldap.conf
+# sysusers.d
+install -m 0644 %{SOURCE502} -D %{buildroot}%{_sysusersdir}/ldap.conf
 
 %pre servers
 %_pre_useradd ldap %{_var}/lib/ldap /bin/false
@@ -561,6 +651,14 @@ fi
 # it now to create a new database environment in case of db library upgrade
 touch /var/lock/subsys/slapd
 fi
+
+
+
+%pre config
+%sysusers_create_package ldap %{SOURCE502}
+
+%post config
+%tmpfiles_create ldap.conf
 
 %post servers
 SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?`
@@ -745,6 +843,82 @@ fi
 %doc doc/rfc doc/drafts
 %doc %{_docdir}/%{name}-guide
 
+%files config
+%dir %{_sysconfdir}/%{name}
+%dir %{_sysconfdir}/%{name}/schema
+%dir %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d
+%{_sysusersdir}/ldap.conf
+%{_tmpfilesdir}/ldap.conf
+
+%files schemas
+%config(noreplace) %{_sysconfdir}/%{name}/schema/README.coreschemas
+%config(noreplace) %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d/coreschemas.conf
+%config(noreplace) %{_sysconfdir}/%{name}/schema/collective.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/collective.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/corba.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/corba.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/core.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/core.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/cosine.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/cosine.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/duaconf.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/duaconf.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/dyngroup.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/dyngroup.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/inetorgperson.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/inetorgperson.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/java.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/java.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/misc.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/misc.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/mull.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/nis.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/nis.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/openldap.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/openldap.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/pmi.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/pmi.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/ppolicy.ldif
+%config(noreplace) %{_sysconfdir}/%{name}/schema/ppolicy.schema
+%{_datadir}/%{name}/schema/collective.ldif
+%{_datadir}/%{name}/schema/collective.schema
+%{_datadir}/%{name}/schema/corba.ldif
+%{_datadir}/%{name}/schema/corba.schema
+%{_datadir}/%{name}/schema/core.ldif
+%{_datadir}/%{name}/schema/core.schema
+%{_datadir}/%{name}/schema/cosine.ldif
+%{_datadir}/%{name}/schema/cosine.schema
+%{_datadir}/%{name}/schema/duaconf.ldif
+%{_datadir}/%{name}/schema/duaconf.schema
+%{_datadir}/%{name}/schema/dyngroup.ldif
+%{_datadir}/%{name}/schema/dyngroup.schema
+%{_datadir}/%{name}/schema/inetorgperson.ldif
+%{_datadir}/%{name}/schema/inetorgperson.schema
+%{_datadir}/%{name}/schema/java.ldif
+%{_datadir}/%{name}/schema/java.schema
+%{_datadir}/%{name}/schema/misc.ldif
+%{_datadir}/%{name}/schema/misc.schema
+%{_datadir}/%{name}/schema/mull.schema
+%{_datadir}/%{name}/schema/nis.ldif
+%{_datadir}/%{name}/schema/nis.schema
+%{_datadir}/%{name}/schema/openldap.ldif
+%{_datadir}/%{name}/schema/openldap.schema
+%{_datadir}/%{name}/schema/pmi.ldif
+%{_datadir}/%{name}/schema/pmi.schema
+%{_datadir}/%{name}/schema/ppolicy.ldif
+%{_datadir}/%{name}/schema/ppolicy.schema
+
+%files schemas-extra
+%config(noreplace) %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d/extraschemas.conf
+%config(noreplace) %{_sysconfdir}/%{name}/schema/printer.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/evoldap.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/urpmi.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/calendar.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/dnszone.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/evolutionperson.schema
+%config(noreplace) %{_sysconfdir}/%{name}/schema/sudo.schema
+
+
 %files servers
 %doc contrib/slapd-modules/acl/README.gssacl
 %doc contrib/slapd-modules/addpartial/README.addpartial
@@ -761,13 +935,9 @@ fi
 %doc contrib/slapd-modules/nssov/README.nssov
 %endif
 %dir %{_sysconfdir}/%{name}
-%dir %{_sysconfdir}/%{name}/schema
 %attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/%{name}/slapd.conf
-%attr(640,root,ldap) %config(noreplace) %{_sysconfdir}/%{name}/slapd.ldif
 %dir %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d
-%attr(640,root,ldap) %{_sysconfdir}/%{name}/DB_CONFIG.example
 %attr(640,root,ldap) %config %{_sysconfdir}/%{name}/slapd.access.conf
-%config(noreplace) %{_sysconfdir}/%{name}/schema/*.schema
 %{_sysconfdir}/cron.hourly/ldap-hot-db-backup
 %{_sysconfdir}/cron.daily/ldap-hot-db-backup
 %{_sysconfdir}/cron.weekly/ldap-hot-db-backup
@@ -775,7 +945,7 @@ fi
 %{_sysconfdir}/cron.yearly/ldap-hot-db-backup
 %config(noreplace) %{_sysconfdir}/logrotate.d/ldap
 %config(noreplace) %{_sysconfdir}/sysconfig/ldap
-%config(noreplace) %{_initrddir}/ldap
+%{_unitdir}/ldap.service
 %{_sbindir}/*
 %dir %{_libdir}/%{name}
 %{_libdir}/%{name}/*.so*
@@ -784,7 +954,6 @@ fi
 %dir %{_datadir}/%{name}/schema
 %{_datadir}/%{name}/schema/*.schema
 %{_datadir}/%{name}/schema/*.ldif
-%{_datadir}/%{name}/schema/README
 %{_datadir}/%{name}/scripts
 %{_mandir}/man5/slap*.5*
 %{_mandir}/man8/*
@@ -815,4 +984,3 @@ fi
 %files testprogs
 %{_bindir}/slapd-*
 %{_bindir}/ldif-filter
-

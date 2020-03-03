@@ -19,9 +19,9 @@
 # Copyright: Buchan Milne <bgmilne@obsidian.co.za> 2004
 #
 
+SLAPD_CONFIG=/etc/openldap/slapd.conf
 WRITELOCKDIR=/var/lib/ldap/lock
 BACKUPTOP=/var/lib/ldap/backup
-SLAPDCONF=/etc/openldap/slapd.conf
 DEBUG=0
 VERBOSE=2
 USECOLOURS=1
@@ -30,8 +30,7 @@ SYSLOGPRIORITY=local4.info
 RUN_DB_BACKUP=daily
 KEEP_ARCHIVES_DAYS=7
 
-CONFIG_FILE="/etc/sysconfig/ldap"
-[ -e $CONFIG_FILE ] && . $CONFIG_FILE
+[ -e "$SLAPD_CONFIG" ] && . "$SLAPD_CONFIG"
 
 IAM=$0
 case $IAM in

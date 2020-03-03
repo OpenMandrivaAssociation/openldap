@@ -1,23 +1,19 @@
-# debug level for slapd
-SLAPDSYSLOGLEVEL="0"
-SLAPDSYSLOGLOCALUSER="LOCAL4" 
+# These parameters get passed to slapd daemon by systemd on start:
 
-# SLAPD URL list 
-#SLAPDURLLIST="ldap:/// ldaps:///"
+# Log level as documented in syslog(3)
+# emerg - 0, alert - 1, crit - 2, err - 3, warning - 4, notice - 5, info - 6, debug - 7
+SLAPD_LOGLEVEL="6"
+# syslog facility
+SLAPD_SYSLOG_FACILITY="DAEMON"
 
-# Config file to use for slapd
-#SLAPDCONF=/etc/openldap/slapd.conf
+# path to config file (man slapd-config)
+SLAPD_CONFIG="/etc/openldap/slapd.conf"
 
-# Which user to run as
-#LDAPUSER=ldap
-#LDAPGROUP=ldap
+# List of URLs to serve
+SLAPD_URLS="ldap:/// ldaps:/// ldapi:///"
 
-# Should file permissions on database files be fixed at startup. Default is yes
-# FIXPERMS=no
-
-# Whether database recovery should be run before starting slapd in start 
-# (not strictly be necessary in 2.3). Default is no
-# AUTORECOVER=yes
+# all other arguements for slapd
+SLAPD_MORE_ARGS=""
 
 # At what intervals to run ldap-hot-db-backup from cron, which will
 # do hot database backups for all bdb/hdb databases, and archive
@@ -28,10 +24,3 @@ SLAPDSYSLOGLOCALUSER="LOCAL4"
 # How many days to keep archived transaction logs for. This should be just
 # greater than the backup interval on these files. Default is 7
 # KEEP_ARCHIVES_DAYS=7
-
-# How many files slapd should be able to have open. By default, the process
-# will inherit the default per-process limit (usually 1024), which may
-# not be enough, so ulimit -n is run with the value in MAXFILES (which
-# defaults to 1024 as well). 4096 is the maximum OpenLDAP will use without 
-# recompiling.
-# MAXFILES=4096
