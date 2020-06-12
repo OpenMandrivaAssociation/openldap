@@ -1,3 +1,8 @@
+# wine uses openldap
+%ifarch %{x86_64}
+%bcond_without compat32
+%endif
+
 #defaults
 %define build_modules 1
 %define build_nssov 1
@@ -26,6 +31,8 @@
 %define fname ldap
 %define libname %mklibname %{fname} %{api} %{major}
 %define devname %mklibname %{fname} %{api} -d
+%define lib32name %mklib32name %{fname} %{api} %{major}
+%define dev32name %mklib32name %{fname} %{api} -d
 
 # we want to use the default db version for each release, so as
 # to make backport binary compatibles
@@ -126,6 +133,14 @@ BuildRequires:	pkgconfig(ncurses)
 BuildRequires:	pkgconfig(openssl)
 BuildRequires:	pkgconfig(com_err)
 Requires:	setup
+%if %{with compat32}
+BuildRequires:	devel(libkrb5)
+BuildRequires:	devel(libncurses)
+BuildRequires:	devel(libssl)
+BuildRequires:	devel(libcom_err)
+BuildRequires:	devel(libltdl)
+BuildRequires:	libcrypt-devel
+%endif
 
 %description
 OpenLDAP is an open source suite of LDAP (Lightweight Directory Access
@@ -277,6 +292,28 @@ Group:		Development/Other
 Programs shipped with the test suite which are used by the test suite, and may
 also be useful as load generators etc.
 
+%if %{with compat32}
+%package -n %{lib32name}
+Summary:	OpenLDAP libraries (32-bit)
+Group:		System/Libraries
+Requires:	%{name}
+
+%description -n %{lib32name}
+This package includes the libraries needed by ldap applications.
+
+%package -n %{dev32name}
+Summary:	OpenLDAP development libraries and header files (32-bit)
+Group:		Development/C
+Requires:	%{devname} = %{version}-%{release}
+Requires:	%{lib32name} = %{version}-%{release}
+
+%description -n %{dev32name}
+This package includes the development libraries and header files
+needed for compiling applications that use LDAP internals.  Install
+this package only if you plan to develop or will need to compile
+LDAP clients.
+%endif
+
 %prep
 %autosetup -p1
 
@@ -313,14 +350,54 @@ CXXFLAGS=`echo $CXXFLAGS|sed -e 's|-fPIE||g'`
 # don't choose db4.3 even if it is available
 export ol_cv_db_db_4_dot_3=no
 
-# try and miss linuxthreads, so we get a threading lib on glibc2.4:
-export ol_cv_header_linux_threads=no
-
 #rh only:
 export CPPFLAGS="-I%{_prefix}/kerberos/include $CPPFLAGS"
 export LDFLAGS="-L%{_prefix}/kerberos/%{_lib} $LDFLAGS"
 %if %{?openldap_fd_setsize:1}%{!?openldap_fd_setsize:0}
 CPPFLAGS="$CPPFLAGS -DOPENLDAP_FD_SETSIZE=%{openldap_fd_setsize}"
+%endif
+
+export CONFIGURE_TOP="$(pwd)"
+
+%if %{with compat32}
+mkdir build32
+cd build32
+%configure32 \
+	--with-subdir=%{name} \
+	--localstatedir=/var/run/ldap \
+	--enable-dynamic \
+	--enable-syslog \
+	--enable-proctitle \
+	--enable-ipv6 \
+	--enable-local \
+	--with-threads \
+	--with-tls \
+	--disable-slapd \
+	--enable-aci \
+	--enable-cleartext \
+	--enable-crypt \
+	--enable-lmpasswd \
+%if %build_modules
+	--enable-modules \
+%endif
+	--enable-rewrite \
+	--enable-rlookups \
+	--enable-wrappers \
+	--enable-bdb=no \
+	--enable-hdb=yes \
+	--enable-lmdb=yes \
+	--enable-ndb=no \
+	--enable-backends=mod \
+	--disable-perl \
+%if %build_sql
+	--enable-sql=mod \
+%else
+	--enable-sql=no \
+%endif
+	--enable-overlays=mod \
+	--enable-shared
+%make_build
+cd ..
 %endif
 
 # FIXME glibc 2.8 breakage, this is not the correct fix, see
@@ -419,6 +496,10 @@ do
 done
 cp contrib/slapd-modules/passwd/sha2/README{,.sha2}
 rm -Rf %{buildroot}
+
+%if %{with compat32}
+%make_install -C build32 STRIP=""
+%endif
 
 %make_install STRIP=""
 
@@ -593,8 +674,30 @@ install -m 644 servers/slapd/*.h  %{buildroot}%{_includedir}/%{name}/slapd
 install -d -m 755 %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
 install -m 644 libraries/liblunicode/ucdata/*.h %{buildroot}%{_includedir}/%{name}/libraries/liblunicode/ucdata
 
+%if %{with compat32}
+# Deal with headers that differ between 32-bit and 64-bit builds
+cd build32/include
+for i in *.h; do
+	mv %{buildroot}%{_includedir}/openldap/include/$i %{buildroot}%{_includedir}/openldap/include/${i/.h/-64.h}
+	cp $i %{buildroot}%{_includedir}/openldap/include/${i/.h/-32.h}
+	cat >%{buildroot}%{_includedir}/openldap/include/$i <<EOF
+#ifdef __i386__
+#include "${i/.h/-32.h}"
+#else
+#include "${i/.h/-64.h}"
+#endif
+EOF
+done
+cd ../..
+%endif
+
+
 rm -f %{buildroot}/%{_libdir}/*.la
 rm -f %{buildroot}%{_libdir}/%{name}/*.la
+%if %{with compat32}
+rm -f %{buildroot}/%{_prefix}/lib/*.la
+rm -f %{buildroot}%{_prefix}/lib/%{name}/*.la
+%endif
 
 # tmpfiles
 install -m 0644 %{SOURCE500} -D %{buildroot}%{_tmpfilesdir}/ldap.conf
@@ -984,3 +1087,11 @@ fi
 %files testprogs
 %{_bindir}/slapd-*
 %{_bindir}/ldif-filter
+
+%if %{with compat32}
+%files -n %{lib32name}
+%{_prefix}/lib/lib*.so.*
+
+%files -n %{dev32name}
+%{_prefix}/lib/libl*.so
+%endif
