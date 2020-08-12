@@ -51,8 +51,8 @@
 
 Summary:	LDAP servers and sample clients
 Name:		openldap
-Version:	2.4.50
-Release:	2
+Version:	2.4.51
+Release:	1
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
