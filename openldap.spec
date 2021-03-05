@@ -122,7 +122,6 @@ BuildRequires:	db52-devel >= %{dbver}
 BuildRequires:	krb5-devel
 %{?_with_cyrussasl:BuildRequires:	sasl-devel}
 BuildRequires:	libltdl-devel
-BuildRequires:	tcp_wrappers-devel
 %if %build_sql
 BuildRequires:	unixODBC-devel
 %endif
@@ -344,8 +343,8 @@ PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
 %serverbuild
 
 # it does not work with -fPIE and someone added that to the serverbuild macro...
-CFLAGS=`echo $CFLAGS|sed -e 's|-fPIE||g'`
-CXXFLAGS=`echo $CXXFLAGS|sed -e 's|-fPIE||g'`
+CFLAGS=$(echo $CFLAGS|sed -e 's|-fPIE||g')
+CXXFLAGS=$(echo $CXXFLAGS|sed -e 's|-fPIE||g')
 
 # don't choose db4.3 even if it is available
 export ol_cv_db_db_4_dot_3=no
@@ -382,7 +381,7 @@ cd build32
 %endif
 	--enable-rewrite \
 	--enable-rlookups \
-	--enable-wrappers \
+	--disable-wrappers \
 	--enable-bdb=no \
 	--enable-hdb=yes \
 	--enable-lmdb=yes \
@@ -428,7 +427,7 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 %endif
 	--enable-rewrite \
 	--enable-rlookups \
-	--enable-wrappers \
+	--disable-wrappers \
 	--enable-bdb=no \
 	--enable-hdb=yes \
 	--enable-lmdb=yes \
