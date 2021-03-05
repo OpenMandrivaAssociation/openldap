@@ -317,8 +317,8 @@ LDAP clients.
 %autosetup -p1
 
 for f in config.guess config.sub ; do
-		test -f /usr/share/libtool/config/$f || continue
-		find . -type f -name $f -exec cp /usr/share/libtool/config/$f \{\} \;
+    test -f /usr/share/libtool/config/$f || continue
+    find . -type f -name $f -exec cp /usr/share/libtool/config/$f \{\} \;
 done
 
 perl -pi -e 's/^(#define\s+DEFAULT_SLURPD_REPLICA_DIR.*)ldap(.*)/${1}ldap${2}/' servers/slurpd/slurp.h
@@ -339,7 +339,7 @@ chmod a+rx tests/scripts/test054*
 AUTOMAKE=/bin/true autoreconf -fiv
 
 %build
-PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
+PATH=$(echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g')
 %serverbuild
 
 # it does not work with -fPIE and someone added that to the serverbuild macro...
@@ -451,7 +451,7 @@ perl -pi -e "s|^AC_CFLAGS.*|AC_CFLAGS = $CFLAGS -fPIC|g" libraries/librewrite/Ma
 
 %make_build depend
 %make_build
-export LIBTOOL=`pwd`/libtool
+export LIBTOOL=$(pwd)/libtool
 
 if [ -d /usr/kerberos/%{_lib} ]; then export LIBRARY_PATH=/usr/kerberos/%{_lib}; fi
 sed -i -e 's/pw-radius.la//g' contrib/slapd-modules/passwd/Makefile
@@ -508,7 +508,7 @@ for i in %{buildroot}/%{_libdir}/%{name}/smbk5pwd*
 do
   if [ -L ${i} ]
   then
-	newlink=`readlink $i|sed -e 's/k5//g'`
+	newlink=$(readlink $i|sed -e 's/k5//g')
 	rm $i
 	ln -svf $newlink ${i/k5/}
   else
@@ -711,7 +711,7 @@ install -m 0644 %{SOURCE502} -D %{buildroot}%{_sysusersdir}/ldap.conf
 
 if [ "$1" -ne '1' ]
 then
-SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?`
+SLAPD_STATUS=$(LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?)
 [ $SLAPD_STATUS -eq 1 ] && service ldap stop
 service ldap recover
 
@@ -721,12 +721,12 @@ LDAPGROUP=ldap
 SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
 
 #decide whether we need to migrate at all:
-MIGRATE=`%{_sbindir}/slapd -VV 2>&1|while read a b c d e;do case $d in (2.4.*) echo nomigrate;;(2.*) echo migrate;;esac;done`
+MIGRATE=$(%{_sbindir}/slapd -VV 2>&1|while read a b c d e;do case $d in (2.4.*) echo nomigrate;;(2.*) echo migrate;;esac;done)
 
 if [ "$1" -ne 1 -a -e "$SLAPDCONF" -a "$MIGRATE" != "nomigrate" ]
 then
 #`awk '/^[:space:]*directory[:space:]*\w*/ {print $2}' /etc/%{name}/slapd.conf`
-dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=$(awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g')
 for db in $dbs
 do
 	dbdir=${db/:*/}
@@ -763,7 +763,7 @@ fi
 %tmpfiles_create ldap.conf
 
 %post servers
-SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?`
+SLAPD_STATUS=$(LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?)
 [ $SLAPD_STATUS -eq 1 ] && service ldap stop
 # bgmilne: part 2 of gdbm->dbb conversion for data created with
 # original package for 9.1:
@@ -774,7 +774,7 @@ LDAPGROUP=ldap
 SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
 if [ -e "$SLAPDCONF" ]
 then
-dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=$(awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g')
 for db in $dbs
 do
 	dbdir=${db/:*/}
