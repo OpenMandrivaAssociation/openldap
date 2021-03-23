@@ -1,3 +1,5 @@
+%define _disable_rebuild_configure 1
+
 # wine uses openldap
 %ifarch %{x86_64}
 %bcond_without compat32
@@ -58,7 +60,7 @@ Group:		System/Servers
 Url:		http://www.openldap.org
 Source0:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{name}-%{version}.tgz
 Source12:	openldap-guide-2.4.tar.bz2
-Source13:	README-openldap2.4.mdv
+Source13:	README-openldap2.4.omv
 Source14:	ldap.service
 Source15:	openldap.sysconfig
 Source19:	gencert.sh
@@ -86,7 +88,6 @@ Source102:	vendor-standalone.sdf
 Source500:	ldap.tmpfiles.d
 Source502:	ldap.sysusers.d
 
-
 Patch0:		openldap-2.3.4-config.patch
 Patch1:		openldap-2.0.7-module.patch
 Patch2:		openldap-2.3-smbk5passwd-paths.patch
@@ -104,9 +105,8 @@ Patch53:	openldap-ntlm.patch
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
 
-# http://git.yoctoproject.org/cgit/cgit.cgi/meta-cloud-services/tree/recipes-support/openldap/openldap-2.4.39/libldap-symbol-versions.patch?h=master
 # https://github.com/ValveSoftware/csgo-osx-linux/issues/1925
-Patch54:	libldap-symbol-versions.patch
+Patch54:	https://salsa.debian.org/openldap-team/openldap/-/raw/master/debian/patches/libldap-symbol-versions
 
 # for make test:
 BuildRequires:	diffutils
@@ -222,7 +222,6 @@ database maintenance tools
 This server package was compiled with support for the following database
 library: %{?_with_gdbm:gdbm}%{!?_with_gdbm:berkeley}
 
-
 %package clients
 Summary:	OpenLDAP clients and related files
 Group:		System/Servers
@@ -322,7 +321,7 @@ perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 perl -pi -e 's/testrun/\${TESTDIR}/g' tests/scripts/test024-unique
 
 # README:
-cp %{SOURCE13} README.mdk
+cp %{SOURCE13} README.omv
 
 # test048 has timing issues
 mv tests/scripts/{,broken}test048*
@@ -330,10 +329,8 @@ mv tests/scripts/{,broken}test048*
 mv tests/scripts/{,broken}test049*
 
 chmod a+rx tests/scripts/test054*
-libtoolize
-aclocal --force --install -I m4
-autoconf -f
-autoheader -f
+touch NEWS AUTHORS ChangeLog Makefile.am
+autoreconf -fiv
 
 %build
 PATH=$(echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g')
@@ -392,6 +389,7 @@ cd build32
 %endif
 	--enable-overlays=mod \
 	--enable-shared
+
 %make_build
 cd ..
 %endif
@@ -445,6 +443,11 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 
 # (oe) amd64 fix
 perl -pi -e "s|^AC_CFLAGS.*|AC_CFLAGS = $CFLAGS -fPIC|g" libraries/librewrite/Makefile
+
+# ldap_config.h: No such file or directory
+cd include
+make
+cd ..
 
 %make_build depend
 %make_build
@@ -882,20 +885,20 @@ then
 fi
 %endif
 
-pushd %{_sysconfdir}/%{name}/ > /dev/null
+cd %{_sysconfdir}/%{name}/ > /dev/null
 for i in slapd.conf slapd.access.conf ; do
-	if [ -f $i ]; then
-		chmod 0640 $i
-		chown root:ldap $i
-	fi
+    if [ -f $i ]; then
+	chmod 0640 $i
+	chown root:ldap $i
+    fi
 done
-popd > /dev/null
+cd .. > /dev/null
 
 %_post_service ldap
 
 # nscd reset
 if [ -f /var/lock/subsys/nscd ]; then
-	service nscd restart  > /dev/null 2>/dev/null || :
+    systemctl -q restart nscd.service || :
 fi
 
 
@@ -921,21 +924,12 @@ fi
 %_postun_userdel ldap
 %_postun_groupdel ldap
 
-%triggerpostun -- openldap-clients < 2.1.25-5mdk
-# We may have openldap client configuration in /etc/ldap.conf
-# which now needs to be in /etc/openldap/ldap.conf
-if [ -f /etc/ldap.conf ]
-then
-	mv -f /etc/%{name}/ldap.conf /etc/%{name}/ldap.conf.rpmfix
-	cp -af /etc/ldap.conf /etc/%{name}/ldap.conf
-fi
-
 %files
 %config(noreplace) %{_sysconfdir}/%{name}/ldapserver
 %attr(644,root,root) %config(noreplace) %{_sysconfdir}/%{name}/ldap.conf
 %{_mandir}/man5/ldap.conf.5*
 %{_mandir}/man5/ldif.5*
-%doc README.mdk
+%doc README.omv
 
 %files doc
 %doc ANNOUNCEMENT CHANGES COPYRIGHT LICENSE README
