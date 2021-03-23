@@ -330,7 +330,10 @@ mv tests/scripts/{,broken}test048*
 mv tests/scripts/{,broken}test049*
 
 chmod a+rx tests/scripts/test054*
-autoreconf -fiv
+libtoolize
+aclocal --force --install -I m4
+autoconf -f
+autoheader -f
 
 %build
 PATH=$(echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g')
