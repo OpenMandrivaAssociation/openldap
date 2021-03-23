@@ -51,7 +51,7 @@
 
 Summary:	LDAP servers and sample clients
 Name:		openldap
-Version:	2.4.57
+Version:	2.4.58
 Release:	1
 License:	Artistic
 Group:		System/Servers
@@ -59,8 +59,8 @@ Url:		http://www.openldap.org
 Source0:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{name}-%{version}.tgz
 Source12:	openldap-guide-2.4.tar.bz2
 Source13:	README-openldap2.4.mdv
-Source14: 	ldap.service
-Source15: 	openldap.sysconfig
+Source14:	ldap.service
+Source15:	openldap.sysconfig
 Source19:	gencert.sh
 Source20:	ldap.logrotate
 Source21:	slapd.conf
@@ -70,24 +70,19 @@ Source24:	slapd.access.conf
 Source25:	ldap-hot-db-backup
 Source26:	ldap-reinitialise-slave
 Source27:	ldap-common
-
 Source28:	coreschemas.conf
 Source29:	extraschemas.conf
-
 # Extended Schema
 Source50:	printer.schema
 Source51:	evoldap.schema
-Source52:	urpmi.schema
 Source53:	sudo.schema
 Source54:	mull.schema
 Source55:	evolutionperson.schema
 Source56:	dnszone.schema
 Source57:	calendar.schema
-
 Source100:	openldap-2.4-admin-guide-add-vendor-doc.patch
 Source101:	vendor.sdf
 Source102:	vendor-standalone.sdf
-
 Source500:	ldap.tmpfiles.d
 Source502:	ldap.sysusers.d
 
@@ -177,7 +172,6 @@ Recommends:	openldap-schemas-pureftpd
 Recommends:	openldap-schemas-quota
 Recommends:	openldap-schemas-sendmail
 Recommends:	openldap-schemas-evoldap
-Recommends:	openldap-schemas-urpmi
 Recommends:	openldap-schemas-extra
 
 %description schemas
@@ -336,7 +330,7 @@ mv tests/scripts/{,broken}test048*
 mv tests/scripts/{,broken}test049*
 
 chmod a+rx tests/scripts/test054*
-AUTOMAKE=/bin/true autoreconf -fiv
+autoreconf -fiv
 
 %build
 PATH=$(echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g')
@@ -1014,7 +1008,6 @@ fi
 %config(noreplace) %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d/extraschemas.conf
 %config(noreplace) %{_sysconfdir}/%{name}/schema/printer.schema
 %config(noreplace) %{_sysconfdir}/%{name}/schema/evoldap.schema
-%config(noreplace) %{_sysconfdir}/%{name}/schema/urpmi.schema
 %config(noreplace) %{_sysconfdir}/%{name}/schema/calendar.schema
 %config(noreplace) %{_sysconfdir}/%{name}/schema/dnszone.schema
 %config(noreplace) %{_sysconfdir}/%{name}/schema/evolutionperson.schema
