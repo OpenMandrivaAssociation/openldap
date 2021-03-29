@@ -329,8 +329,8 @@ mv tests/scripts/{,broken}test048*
 mv tests/scripts/{,broken}test049*
 
 chmod a+rx tests/scripts/test054*
-touch NEWS AUTHORS ChangeLog Makefile.am
-autoreconf -fiv
+touch NEWS AUTHORS ChangeLog
+autoconf
 
 %build
 PATH=$(echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g')
@@ -618,7 +618,6 @@ mv %{buildroot}%{_sysconfdir}/%{name}/schema/README %{buildroot}%{_sysconfdir}/%
 install -m 644 %{SOURCE54} %{buildroot}%{_datadir}/%{name}/schema/
 install -m 644 %{SOURCE50} %{buildroot}%{_sysconfdir}/%{name}/schema/
 install -m 644 %{SOURCE51} %{buildroot}%{_sysconfdir}/%{name}/schema/
-install -m 644 %{SOURCE52} %{buildroot}%{_sysconfdir}/%{name}/schema/
 install -m 644 %{SOURCE53} %{buildroot}%{_sysconfdir}/%{name}/schema/
 install -m 644 %{SOURCE54} %{buildroot}%{_sysconfdir}/%{name}/schema/
 install -m 644 %{SOURCE55} %{buildroot}%{_sysconfdir}/%{name}/schema/
