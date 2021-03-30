@@ -1,3 +1,5 @@
+%define _disable_rebuild_configure 1
+
 # wine uses openldap
 %ifarch %{x86_64}
 %bcond_without compat32
@@ -51,16 +53,16 @@
 
 Summary:	LDAP servers and sample clients
 Name:		openldap
-Version:	2.4.57
+Version:	2.4.58
 Release:	1
 License:	Artistic
 Group:		System/Servers
 Url:		http://www.openldap.org
 Source0:	ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/%{name}-%{version}.tgz
 Source12:	openldap-guide-2.4.tar.bz2
-Source13:	README-openldap2.4.mdv
-Source14: 	ldap.service
-Source15: 	openldap.sysconfig
+Source13:	README-openldap2.4.omv
+Source14:	ldap.service
+Source15:	openldap.sysconfig
 Source19:	gencert.sh
 Source20:	ldap.logrotate
 Source21:	slapd.conf
@@ -70,27 +72,21 @@ Source24:	slapd.access.conf
 Source25:	ldap-hot-db-backup
 Source26:	ldap-reinitialise-slave
 Source27:	ldap-common
-
 Source28:	coreschemas.conf
 Source29:	extraschemas.conf
-
 # Extended Schema
 Source50:	printer.schema
 Source51:	evoldap.schema
-Source52:	urpmi.schema
 Source53:	sudo.schema
 Source54:	mull.schema
 Source55:	evolutionperson.schema
 Source56:	dnszone.schema
 Source57:	calendar.schema
-
 Source100:	openldap-2.4-admin-guide-add-vendor-doc.patch
 Source101:	vendor.sdf
 Source102:	vendor-standalone.sdf
-
 Source500:	ldap.tmpfiles.d
 Source502:	ldap.sysusers.d
-
 
 Patch0:		openldap-2.3.4-config.patch
 Patch1:		openldap-2.0.7-module.patch
@@ -109,9 +105,8 @@ Patch53:	openldap-ntlm.patch
 # see http://www.stanford.edu/services/directory/openldap/configuration/openldap-build.html
 # for other possibly interesting patches
 
-# http://git.yoctoproject.org/cgit/cgit.cgi/meta-cloud-services/tree/recipes-support/openldap/openldap-2.4.39/libldap-symbol-versions.patch?h=master
 # https://github.com/ValveSoftware/csgo-osx-linux/issues/1925
-Patch54:	libldap-symbol-versions.patch
+Patch54:	https://salsa.debian.org/openldap-team/openldap/-/raw/master/debian/patches/libldap-symbol-versions
 
 # for make test:
 BuildRequires:	diffutils
@@ -122,7 +117,6 @@ BuildRequires:	db52-devel >= %{dbver}
 BuildRequires:	krb5-devel
 %{?_with_cyrussasl:BuildRequires:	sasl-devel}
 BuildRequires:	libltdl-devel
-BuildRequires:	tcp_wrappers-devel
 %if %build_sql
 BuildRequires:	unixODBC-devel
 %endif
@@ -178,7 +172,6 @@ Recommends:	openldap-schemas-pureftpd
 Recommends:	openldap-schemas-quota
 Recommends:	openldap-schemas-sendmail
 Recommends:	openldap-schemas-evoldap
-Recommends:	openldap-schemas-urpmi
 Recommends:	openldap-schemas-extra
 
 %description schemas
@@ -228,7 +221,6 @@ database maintenance tools
 
 This server package was compiled with support for the following database
 library: %{?_with_gdbm:gdbm}%{!?_with_gdbm:berkeley}
-
 
 %package clients
 Summary:	OpenLDAP clients and related files
@@ -318,8 +310,8 @@ LDAP clients.
 %autosetup -p1
 
 for f in config.guess config.sub ; do
-		test -f /usr/share/libtool/config/$f || continue
-		find . -type f -name $f -exec cp /usr/share/libtool/config/$f \{\} \;
+    test -f /usr/share/libtool/config/$f || continue
+    find . -type f -name $f -exec cp /usr/share/libtool/config/$f \{\} \;
 done
 
 perl -pi -e 's/^(#define\s+DEFAULT_SLURPD_REPLICA_DIR.*)ldap(.*)/${1}ldap${2}/' servers/slurpd/slurp.h
@@ -329,7 +321,7 @@ perl -pi -e 's/LDAP_DIRSEP "run" //g' include/ldap_defaults.h
 perl -pi -e 's/testrun/\${TESTDIR}/g' tests/scripts/test024-unique
 
 # README:
-cp %{SOURCE13} README.mdk
+cp %{SOURCE13} README.omv
 
 # test048 has timing issues
 mv tests/scripts/{,broken}test048*
@@ -337,15 +329,16 @@ mv tests/scripts/{,broken}test048*
 mv tests/scripts/{,broken}test049*
 
 chmod a+rx tests/scripts/test054*
-AUTOMAKE=/bin/true autoreconf -fiv
+touch NEWS AUTHORS ChangeLog
+autoconf
 
 %build
-PATH=`echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g'`
+PATH=$(echo $PATH|perl -pe 's,:[\/\w]+icecream[\/\w]+:,:,g')
 %serverbuild
 
 # it does not work with -fPIE and someone added that to the serverbuild macro...
-CFLAGS=`echo $CFLAGS|sed -e 's|-fPIE||g'`
-CXXFLAGS=`echo $CXXFLAGS|sed -e 's|-fPIE||g'`
+CFLAGS=$(echo $CFLAGS|sed -e 's|-fPIE||g')
+CXXFLAGS=$(echo $CXXFLAGS|sed -e 's|-fPIE||g')
 
 # don't choose db4.3 even if it is available
 export ol_cv_db_db_4_dot_3=no
@@ -382,7 +375,7 @@ cd build32
 %endif
 	--enable-rewrite \
 	--enable-rlookups \
-	--enable-wrappers \
+	--disable-wrappers \
 	--enable-bdb=no \
 	--enable-hdb=yes \
 	--enable-lmdb=yes \
@@ -396,6 +389,7 @@ cd build32
 %endif
 	--enable-overlays=mod \
 	--enable-shared
+
 %make_build
 cd ..
 %endif
@@ -428,7 +422,7 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 %endif
 	--enable-rewrite \
 	--enable-rlookups \
-	--enable-wrappers \
+	--disable-wrappers \
 	--enable-bdb=no \
 	--enable-hdb=yes \
 	--enable-lmdb=yes \
@@ -450,9 +444,14 @@ CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
 # (oe) amd64 fix
 perl -pi -e "s|^AC_CFLAGS.*|AC_CFLAGS = $CFLAGS -fPIC|g" libraries/librewrite/Makefile
 
+# ldap_config.h: No such file or directory
+cd include
+make
+cd ..
+
 %make_build depend
 %make_build
-export LIBTOOL=`pwd`/libtool
+export LIBTOOL=$(pwd)/libtool
 
 if [ -d /usr/kerberos/%{_lib} ]; then export LIBRARY_PATH=/usr/kerberos/%{_lib}; fi
 sed -i -e 's/pw-radius.la//g' contrib/slapd-modules/passwd/Makefile
@@ -509,7 +508,7 @@ for i in %{buildroot}/%{_libdir}/%{name}/smbk5pwd*
 do
   if [ -L ${i} ]
   then
-	newlink=`readlink $i|sed -e 's/k5//g'`
+	newlink=$(readlink $i|sed -e 's/k5//g')
 	rm $i
 	ln -svf $newlink ${i/k5/}
   else
@@ -619,7 +618,6 @@ mv %{buildroot}%{_sysconfdir}/%{name}/schema/README %{buildroot}%{_sysconfdir}/%
 install -m 644 %{SOURCE54} %{buildroot}%{_datadir}/%{name}/schema/
 install -m 644 %{SOURCE50} %{buildroot}%{_sysconfdir}/%{name}/schema/
 install -m 644 %{SOURCE51} %{buildroot}%{_sysconfdir}/%{name}/schema/
-install -m 644 %{SOURCE52} %{buildroot}%{_sysconfdir}/%{name}/schema/
 install -m 644 %{SOURCE53} %{buildroot}%{_sysconfdir}/%{name}/schema/
 install -m 644 %{SOURCE54} %{buildroot}%{_sysconfdir}/%{name}/schema/
 install -m 644 %{SOURCE55} %{buildroot}%{_sysconfdir}/%{name}/schema/
@@ -712,7 +710,7 @@ install -m 0644 %{SOURCE502} -D %{buildroot}%{_sysusersdir}/ldap.conf
 
 if [ "$1" -ne '1' ]
 then
-SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?`
+SLAPD_STATUS=$(LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?)
 [ $SLAPD_STATUS -eq 1 ] && service ldap stop
 service ldap recover
 
@@ -722,12 +720,12 @@ LDAPGROUP=ldap
 SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
 
 #decide whether we need to migrate at all:
-MIGRATE=`%{_sbindir}/slapd -VV 2>&1|while read a b c d e;do case $d in (2.4.*) echo nomigrate;;(2.*) echo migrate;;esac;done`
+MIGRATE=$(%{_sbindir}/slapd -VV 2>&1|while read a b c d e;do case $d in (2.4.*) echo nomigrate;;(2.*) echo migrate;;esac;done)
 
 if [ "$1" -ne 1 -a -e "$SLAPDCONF" -a "$MIGRATE" != "nomigrate" ]
 then
 #`awk '/^[:space:]*directory[:space:]*\w*/ {print $2}' /etc/%{name}/slapd.conf`
-dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=$(awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm"||db=="hdb")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm"||db="hdb")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g')
 for db in $dbs
 do
 	dbdir=${db/:*/}
@@ -764,7 +762,7 @@ fi
 %tmpfiles_create ldap.conf
 
 %post servers
-SLAPD_STATUS=`LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?`
+SLAPD_STATUS=$(LANG=C LC_ALL=C NOLOCALE=1 service ldap status 2>/dev/null|grep -q stopped;echo $?)
 [ $SLAPD_STATUS -eq 1 ] && service ldap stop
 # bgmilne: part 2 of gdbm->dbb conversion for data created with
 # original package for 9.1:
@@ -775,7 +773,7 @@ LDAPGROUP=ldap
 SLAPDCONF=${SLAPDCONF:-/etc/%{name}/slapd.conf}
 if [ -e "$SLAPDCONF" ]
 then
-dbs=`awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g'`
+dbs=$(awk 'BEGIN {OFS=":"} /[[:space:]]*^database[[:space:]]*\w*/ {db=$2;suf="";dir=""}; /^[[:space:]]*suffix[[:space:]]*\w*/ {suf=$2;if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};/^[[:space:]]*directory[[:space:]]*\w*/ {dir=$2; if((db=="bdb"||db=="ldbm")&&(suf!=""&&dir!="")) print dir,suf};' "$SLAPDCONF" $(awk  '/^[[:blank:]]*include[[:blank:]]*/ {print $2}' "$SLAPDCONF")|sed -e 's/"//g')
 for db in $dbs
 do
 	dbdir=${db/:*/}
@@ -886,20 +884,20 @@ then
 fi
 %endif
 
-pushd %{_sysconfdir}/%{name}/ > /dev/null
+cd %{_sysconfdir}/%{name}/ > /dev/null
 for i in slapd.conf slapd.access.conf ; do
-	if [ -f $i ]; then
-		chmod 0640 $i
-		chown root:ldap $i
-	fi
+    if [ -f $i ]; then
+	chmod 0640 $i
+	chown root:ldap $i
+    fi
 done
-popd > /dev/null
+cd .. > /dev/null
 
 %_post_service ldap
 
 # nscd reset
 if [ -f /var/lock/subsys/nscd ]; then
-	service nscd restart  > /dev/null 2>/dev/null || :
+    systemctl -q restart nscd.service || :
 fi
 
 
@@ -925,21 +923,12 @@ fi
 %_postun_userdel ldap
 %_postun_groupdel ldap
 
-%triggerpostun -- openldap-clients < 2.1.25-5mdk
-# We may have openldap client configuration in /etc/ldap.conf
-# which now needs to be in /etc/openldap/ldap.conf
-if [ -f /etc/ldap.conf ]
-then
-	mv -f /etc/%{name}/ldap.conf /etc/%{name}/ldap.conf.rpmfix
-	cp -af /etc/ldap.conf /etc/%{name}/ldap.conf
-fi
-
 %files
 %config(noreplace) %{_sysconfdir}/%{name}/ldapserver
 %attr(644,root,root) %config(noreplace) %{_sysconfdir}/%{name}/ldap.conf
 %{_mandir}/man5/ldap.conf.5*
 %{_mandir}/man5/ldif.5*
-%doc README.mdk
+%doc README.omv
 
 %files doc
 %doc ANNOUNCEMENT CHANGES COPYRIGHT LICENSE README
@@ -1015,7 +1004,6 @@ fi
 %config(noreplace) %attr(750,ldap,ldap) %{_sysconfdir}/%{name}/slapd.d/extraschemas.conf
 %config(noreplace) %{_sysconfdir}/%{name}/schema/printer.schema
 %config(noreplace) %{_sysconfdir}/%{name}/schema/evoldap.schema
-%config(noreplace) %{_sysconfdir}/%{name}/schema/urpmi.schema
 %config(noreplace) %{_sysconfdir}/%{name}/schema/calendar.schema
 %config(noreplace) %{_sysconfdir}/%{name}/schema/dnszone.schema
 %config(noreplace) %{_sysconfdir}/%{name}/schema/evolutionperson.schema
