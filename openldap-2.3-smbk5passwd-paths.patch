@@ -1,6 +1,7 @@
---- openldap-2.4.39/contrib/slapd-modules/smbk5pwd/Makefile.0002~	2014-02-16 12:49:36.944331909 +0100
-+++ openldap-2.4.39/contrib/slapd-modules/smbk5pwd/Makefile	2014-02-16 12:50:31.892330522 +0100
-@@ -21,8 +21,8 @@ LDAP_LIB = $(LDAP_BUILD)/libraries/libld
+diff -uraN openldap-2.5.6/contrib/slapd-modules/smbk5pwd/Makefile omv-openldap-2.5.6/contrib/slapd-modules/smbk5pwd/Makefile
+--- openldap-2.5.6/contrib/slapd-modules/smbk5pwd/Makefile	2021-07-27 19:44:47.000000000 +0200
++++ omv-openldap-2.5.6/contrib/slapd-modules/smbk5pwd/Makefile	2021-07-28 00:11:48.633453796 +0200
+@@ -21,8 +21,8 @@
  SSL_INC = 
  SSL_LIB = -lcrypto
  
@@ -10,4 +11,4 @@
 +HEIMDAL_LIB = -L$(libdir)/heimdal -lkrb5 -lkadm5srv
  
  LIBTOOL = $(LDAP_BUILD)/libtool
- CC = gcc
+ INSTALL = /usr/bin/install
