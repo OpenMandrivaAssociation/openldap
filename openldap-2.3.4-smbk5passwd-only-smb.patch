@@ -1,8 +1,9 @@
---- openldap-2.4.39/contrib/slapd-modules/smbk5pwd/Makefile.0003~	2014-02-16 12:51:03.575329721 +0100
-+++ openldap-2.4.39/contrib/slapd-modules/smbk5pwd/Makefile	2014-02-16 13:26:34.507275902 +0100
-@@ -28,9 +28,9 @@ LIBTOOL = $(LDAP_BUILD)/libtool
+diff -uraN openldap-2.5.6/contrib/slapd-modules/smbk5pwd/Makefile omv-openldap-2.5.6/contrib/slapd-modules/smbk5pwd/Makefile
+--- openldap-2.5.6/contrib/slapd-modules/smbk5pwd/Makefile	2021-07-27 19:44:47.000000000 +0200
++++ omv-openldap-2.5.6/contrib/slapd-modules/smbk5pwd/Makefile	2021-07-28 00:23:14.105482366 +0200
+@@ -29,9 +29,9 @@
  CC = gcc
- OPT = -g -O2 -Wall
+ OPT = -g -O2
  # Omit DO_KRB5, DO_SAMBA or DO_SHADOW if you don't want to support it.
 -DEFS = -DDO_KRB5 -DDO_SAMBA -DDO_SHADOW
 +DEFS = -DDO_SAMBA -DDO_SHADOW
@@ -11,4 +12,4 @@
 +LIBS = $(LDAP_LIB) $(SSL_LIB)
  
  PROGRAMS = smbk5pwd.la
- LTVER = 0:0:0
+ MANPAGES = slapo-smbk5pwd.5
