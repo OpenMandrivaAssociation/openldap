@@ -1,0 +1,60 @@
+diff -up openldap-2.6.6/servers/lloadd/module_init.c.omv~ openldap-2.6.6/servers/lloadd/module_init.c
+--- openldap-2.6.6/servers/lloadd/module_init.c.omv~	2023-08-08 00:01:01.864180270 +0200
++++ openldap-2.6.6/servers/lloadd/module_init.c	2023-08-08 00:01:25.261395039 +0200
+@@ -151,7 +151,7 @@ lload_back_initialize( BackendInfo *bi )
+ {
+     bi->bi_flags = SLAP_BFLAG_STANDALONE;
+     bi->bi_open = lload_back_open;
+-    bi->bi_config = config_generic_wrapper;
++    bi->bi_config = config_generic_wrapper_BI;
+     bi->bi_pause = lload_pause_cb;
+     bi->bi_unpause = lload_unpause_cb;
+     bi->bi_close = lload_back_close;
+diff -up openldap-2.6.6/servers/slapd/config.c.omv~ openldap-2.6.6/servers/slapd/config.c
+--- openldap-2.6.6/servers/slapd/config.c.omv~	2023-08-08 00:00:04.834654491 +0200
++++ openldap-2.6.6/servers/slapd/config.c	2023-08-08 00:00:37.802958848 +0200
+@@ -2304,6 +2304,32 @@ int config_generic_wrapper( Backend *be,
+ 	return rc;
+ }
+ 
++int config_generic_wrapper_BI( BackendInfo *bi, const char *fname, int lineno,
++	int argc, char **argv )
++{
++	ConfigArgs c = { 0 };
++	ConfigTable *ct;
++	int rc;
++
++	c.be = bi;
++	c.fname = fname;
++	c.lineno = lineno;
++	c.argc = argc;
++	c.argv = argv;
++	c.valx = -1;
++	c.line = line;
++	c.op = SLAP_CONFIG_ADD;
++	snprintf( c.log, sizeof( c.log ), "%s: line %d", fname, lineno );
++
++	rc = SLAP_CONF_UNKNOWN;
++	ct = config_find_keyword( bi->bi_cf_ocs->co_table, &c );
++	if ( ct ) {
++		c.table = bi->bi_cf_ocs->co_type;
++		rc = config_add_vals( ct, &c );
++	}
++	return rc;
++}
++
+ /* See if the given URL (in plain and parsed form) matches
+  * any of the server's listener addresses. Return matching
+  * Listener or NULL for no match.
+diff -up openldap-2.6.6/servers/slapd/proto-slap.h.omv~ openldap-2.6.6/servers/slapd/proto-slap.h
+--- openldap-2.6.6/servers/slapd/proto-slap.h.omv~	2023-08-07 23:59:31.508345624 +0200
++++ openldap-2.6.6/servers/slapd/proto-slap.h	2023-08-08 00:00:50.321074118 +0200
+@@ -737,6 +737,8 @@ LDAP_SLAPD_F (void) slap_client_keepaliv
+ LDAP_SLAPD_F (int) slap_client_connect LDAP_P(( LDAP **ldp, slap_bindconf *sb ));
+ LDAP_SLAPD_F (int) config_generic_wrapper LDAP_P(( Backend *be,
+ 	const char *fname, int lineno, int argc, char **argv ));
++LDAP_SLAPD_F (int) config_generic_wrapper_BI LDAP_P(( BackendInfo *be,
++	const char *fname, int lineno, int argc, char **argv ));
+ LDAP_SLAPD_F (char *) anlist_unparse LDAP_P(( AttributeName *, char *, ber_len_t buflen ));
+ LDAP_SLAPD_F (int) slap_bv_x_ordered_unparse LDAP_P(( BerVarray in, BerVarray *out ));
+ LDAP_SLAPD_F (int) slap_keepalive_parse( struct berval *val, void *bc,
