@@ -212,6 +212,10 @@ done
 # enable experimental support for LDAP over UDP (LDAP_CONNECTIONLESS)
 export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
 
+# FIXME in the cross_compiling case, we assume we're crosscompiling
+# to something with a yielding select -- this assumption may not
+# always be true -- some ifos/ifarch switches may be necessary
+
 %configure \
 	--enable-debug \
 	--enable-dynamic \
@@ -249,6 +253,10 @@ export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
 	--with-threads \
 	--with-pic \
 	--with-gnu-ld \
+	\
+%if %{cross_compiling}
+	--with-yielding_select=yes \
+%endif
 	\
 	--libexecdir=%{_libdir}
 
