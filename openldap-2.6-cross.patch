@@ -1,0 +1,19 @@
+diff -up openldap-2.6.6/configure.ac.13~ openldap-2.6.6/configure.ac
+--- openldap-2.6.6/configure.ac.13~	2023-07-31 20:09:15.000000000 +0200
++++ openldap-2.6.6/configure.ac	2023-08-08 04:34:29.791014132 +0200
+@@ -2348,10 +2348,11 @@ dnl ------------------------------------
+ dnl Checks for library functions.
+ AC_FUNC_MEMCMP
+ 
+-if test $ac_cv_func_memcmp_working = no ; then
+-	AC_DEFINE(NEED_MEMCMP_REPLACEMENT,1,
+-		[define if memcmp is not 8-bit clean or is otherwise broken])
+-fi
++#if test $ac_cv_func_memcmp_working = no ; then
++#	AC_DEFINE(NEED_MEMCMP_REPLACEMENT,1,
++#		[define if memcmp is not 8-bit clean or is otherwise broken])
++#	LIBSRCS="$LIBSRCS memcmp.c"
++#fi
+ 
+ AC_FUNC_STRFTIME
+ 

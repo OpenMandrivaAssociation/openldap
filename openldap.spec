@@ -14,11 +14,19 @@
 # Disable automatic .la file removal
 %global __brp_remove_la_files %nil
 
+%if %{cross_compiling}
+# Workaround for libtool brokenness being unable to handle spaces
+# in $CC (such as "clang -target whatever")
+%define prefer_gcc 1
+%endif
+
 %define libname %mklibname ldap
 %define lberlibname %mklibname lber
 %define slapilibname %mklibname slapi
 %define devname %mklibname -d ldap
 %define compatname %mklibname ldap2.4
+
+%bcond_without perl
 
 Name: openldap
 Version: 2.6.6
@@ -61,6 +69,10 @@ Patch91: check-password.patch
 
 Patch200: openldap-2.6.6-clang16.patch
 Patch201: openldap-2.6.6-compat-2.4.patch
+# memcmp works on all OM targets, but detection
+# doesn't work reliably when crosscompiling, so
+# disable it
+Patch202: openldap-2.6-cross.patch
 
 BuildRequires: pkgconfig(libsasl2)
 BuildRequires: locales-extra-charsets
@@ -189,6 +201,7 @@ programs needed for accessing and modifying OpenLDAP directories.
 
 %prep
 %autosetup -p1 -a 10
+autoconf
 
 # build smbk5pwd with other overlays
 ln -s ../../../contrib/slapd-modules/smbk5pwd/smbk5pwd.c servers/slapd/overlays
@@ -227,7 +240,11 @@ export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
 	--enable-lmpasswd \
 	--enable-spasswd \
 	--enable-modules \
+%if %{with perl}
 	--enable-perl \
+%else
+	--disable-perl \
+%endif
 	--enable-rewrite \
 	--enable-rlookups \
 	--enable-slapi \
@@ -263,7 +280,7 @@ export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
 %make_build
 
 pushd openldap-ppolicy-check-password-%{check_password_version}
-%make_build LDAP_INC="-I../include \
+%make_build CC="%{__cc}" LDAP_INC="-I../include \
  -I../servers/slapd \
  -I../build-servers/include"
 popd
