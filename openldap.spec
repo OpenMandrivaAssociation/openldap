@@ -1,3 +1,8 @@
+# wine uses openldap
+%ifarch %{x86_64}
+%bcond_without compat32
+%endif
+
 %global _hardened_build 1
 %define _disable_ld_no_undefined 1
 %define _disable_lto 1
@@ -25,12 +30,14 @@
 %define slapilibname %mklibname slapi
 %define devname %mklibname -d ldap
 %define compatname %mklibname ldap2.4
+%define lib32name %mklib32name ldap
+%define dev32name %mklib32name -d ldap
 
 %bcond_without perl
 
 Name: openldap
 Version: 2.6.6
-Release: 1
+Release: 2
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: http://www.openldap.org/
@@ -91,6 +98,15 @@ BuildRequires: unixODBC-devel
 Requires: %{libname} = %{EVRD}
 Requires: %{lberlibname} = %{EVRD}
 Requires: %{slapilibname} = %{EVRD}
+
+%if %{with compat32}
+BuildRequires: devel(libkrb5)
+BuildRequires: devel(libncurses)
+BuildRequires: devel(libssl)
+BuildRequires: devel(libcom_err)
+BuildRequires: devel(libltdl)
+BuildRequires: libcrypt-devel
+%endif
 
 %description
 OpenLDAP is an open source suite of LDAP (Lightweight Directory Access
@@ -199,6 +215,28 @@ similar to the way DNS (Domain Name System) information is propagated
 over the Internet. The openldap-clients package contains the client
 programs needed for accessing and modifying OpenLDAP directories.
 
+%if %{with compat32}
+%package -n %{lib32name}
+Summary:	OpenLDAP libraries (32-bit)
+Group:		System/Libraries
+Requires:	%{name}
+
+%description -n %{lib32name}
+This package includes the libraries needed by ldap applications.
+
+%package -n %{dev32name}
+Summary:	OpenLDAP development libraries and header files (32-bit)
+Group:		Development/C
+Requires:	%{devname} = %{version}-%{release}
+Requires:	%{lib32name} = %{version}-%{release}
+
+%description -n %{dev32name}
+This package includes the development libraries and header files
+needed for compiling applications that use LDAP internals.  Install
+this package only if you plan to develop or will need to compile
+32-bit LDAP clients.
+%endif
+
 %prep
 %autosetup -p1 -a 10
 autoconf
@@ -285,9 +323,54 @@ pushd openldap-ppolicy-check-password-%{check_password_version}
  -I../build-servers/include"
 popd
 
+%if %{with compat32}
+CONFIGURE_TOP="$(pwd)"
+mkdir build32
+cd build32
+%configure32 \
+	--with-subdir=%{name} \
+	--localstatedir=/var/run/ldap \
+	--enable-dynamic \
+	--enable-syslog \
+	--enable-ipv6 \
+	--enable-local \
+	--with-threads \
+	--with-tls \
+	--disable-slapd \
+	--enable-aci \
+	--enable-versioning \
+	\
+	--enable-dynacl \
+	--enable-cleartext \
+	--enable-crypt \
+	--enable-spasswd \
+	--enable-modules \
+	--enable-perl \
+	--enable-rlookups \
+	--disable-wrappers \
+	--enable-slapi \
+	--disable-slp \
+	--enable-backends=mod \
+	--disable-perl \
+	--disable-sql \
+	--disable-wt \
+	\
+	--enable-overlays=mod \
+	--enable-shared
+make depend
+%make_build PROGRAMS=""
+cd ..
+%endif
+
+
 %install
 
 mkdir -p %{buildroot}%{_libdir}/
+
+%if %{with compat32}
+# Install 32-bit cruft first so the normal install can overwrite it
+%make_install -C build32 STRIP="" PROGRAMS=""
+%endif
 
 %make_install STRIP_OPTS=""
 
@@ -353,6 +436,25 @@ for X in acl add auth cat dn index modify passwd test schema ; do
   rm %{buildroot}%{_sbindir}/slap$X
   ln -s slapd %{buildroot}%{_sbindir}/slap$X
 done
+
+%if %{with compat32}
+# Deal with headers that differ between 32-bit and 64-bit builds
+cd build32/include
+for i in *.h; do
+	[ -e %{buildroot}%{_includedir}/$i ] || continue
+	cmp $i %{buildroot}%{_includedir}/$i && continue
+	mv %{buildroot}%{_includedir}/$i %{buildroot}%{_includedir}/${i/.h/-64.h}
+	cp $i %{buildroot}%{_includedir}/${i/.h/-32.h}
+	cat >%{buildroot}%{_includedir}/$i <<EOF
+#ifdef __i386__
+#include "${i/.h/-32.h}"
+#else
+#include "${i/.h/-64.h}"
+#endif
+EOF
+done
+cd -
+%endif
 
 # re-symlink unversioned libraries, so ldconfig is not confused
 pushd %{buildroot}%{_libdir}
@@ -555,3 +657,12 @@ exit 0
 %{_libdir}/libldap_r-2.4*.so.*
 %{_libdir}/liblber-2.4*.so.*
 %{_libdir}/libslapi-2.4*.so.*
+
+%if %{with compat32}
+%files -n %{lib32name}
+%{_prefix}/lib/lib*.so.*
+
+%files -n %{dev32name}
+%{_prefix}/lib/libl*.so
+%{_prefix}/lib/pkgconfig/*.pc
+%endif
