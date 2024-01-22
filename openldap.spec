@@ -515,12 +515,12 @@ mv %{buildroot}%{_sysconfdir}/openldap/schema/README README.schema
 # remove files which we don't want packaged
 rm %{buildroot}%{_libdir}/*.la  # because we do not want files in %{_libdir}/openldap/ removed, yet
 
-%pre servers
-# create ldap user and group
-getent group ldap &>/dev/null || groupadd -r -g 55 ldap
-getent passwd ldap &>/dev/null || \
-	useradd -r -g ldap -u 55 -d %{_sharedstatedir}/ldap -s /sbin/nologin -c "OpenLDAP server" ldap
-exit 0
+# Create the ldap user and group
+mkdir -p %{buildroot}%{_sysusersdir}
+cat >%{buildroot}%{_sysusersdir}/ldap.conf <<'EOF'
+g ldap 55 - -
+u ldap 55:55 "OpenLDAP server" %{_sharedstatedir}/ldap /sbin/nologin
+EOF
 
 %post servers
 %systemd_post slapd.service
@@ -635,6 +635,7 @@ exit 0
 %{_mandir}/man5/slapd*.5*
 %{_mandir}/man5/slapo-*.5*
 %{_mandir}/man5/slappw-argon2.5*
+%{_sysusersdir}/*.conf
 # obsolete configuration
 %ghost %config(noreplace,missingok) %attr(0640,ldap,ldap) %{_sysconfdir}/openldap/slapd.conf
 
