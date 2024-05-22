@@ -36,8 +36,8 @@
 %bcond_without perl
 
 Name: openldap
-Version: 2.6.6
-Release: 2
+Version: 2.6.8
+Release: 1
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: http://www.openldap.org/
@@ -74,7 +74,7 @@ Patch8: openldap-add-export-symbols-LDAP_CONNECTIONLESS.patch
 Patch90: check-password-makefile.patch
 Patch91: check-password.patch
 
-Patch200: openldap-2.6.6-clang16.patch
+#Patch200: openldap-2.6.6-clang16.patch
 Patch201: openldap-2.6.6-compat-2.4.patch
 # memcmp works on all OM targets, but detection
 # doesn't work reliably when crosscompiling, so
@@ -613,6 +613,7 @@ exit 0
 %{_libdir}/openldap/home*
 %{_libdir}/openldap/lloadd*
 %{_libdir}/openldap/memberof*
+%{_libdir}/openldap/nestgroup*
 %{_libdir}/openldap/otp*
 %{_libdir}/openldap/pcache*
 %{_libdir}/openldap/ppolicy*
