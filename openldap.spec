@@ -40,7 +40,7 @@ Version: 2.6.8
 Release: 1
 Summary: LDAP support libraries
 License: OpenLDAP
-URL: http://www.openldap.org/
+URL: https://www.openldap.org/
 
 Source0: https://openldap.org/software/download/OpenLDAP/openldap-release/openldap-%{version}.tgz
 Source1: slapd.service
