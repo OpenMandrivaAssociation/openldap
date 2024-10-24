@@ -37,7 +37,7 @@
 
 Name: openldap
 Version: 2.6.8
-Release: 1
+Release: 2
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
