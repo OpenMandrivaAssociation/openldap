@@ -36,7 +36,7 @@
 %bcond_without perl
 
 Name: openldap
-Version: 2.6.9
+Version: 2.6.10
 Release: 1
 Summary: LDAP support libraries
 License: OpenLDAP
