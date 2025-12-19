@@ -81,6 +81,7 @@ Patch201: openldap-2.6.6-compat-2.4.patch
 # disable it
 Patch202: openldap-2.6-cross.patch
 
+BuildRequires: autoconf
 BuildRequires: pkgconfig(libsasl2)
 BuildRequires: locales-extra-charsets
 BuildRequires: groff
