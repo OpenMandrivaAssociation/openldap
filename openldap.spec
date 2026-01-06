@@ -35,6 +35,11 @@
 
 %bcond_without perl
 
+%if %{with perl} && %{cross_compiling}
+# OpenLDAP seems to have a problem locating perl headers when crosscompiling
+%global optflags %{optflags} -I%{_libdir}/perl5/CORE
+%endif
+
 Name: openldap
 Version: 2.6.10
 Release: 2
