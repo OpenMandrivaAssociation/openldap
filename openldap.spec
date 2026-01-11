@@ -326,10 +326,10 @@ export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
 	\
 	--libexecdir=%{_libdir}
 
-%make_build
+%make_build LIBTOOL=rlibtool
 
 pushd openldap-ppolicy-check-password-%{check_password_version}
-%make_build CC="%{__cc}" LDAP_INC="-I../include \
+%make_build CC="%{__cc}" LIBTOOL=rlibtool LDAP_INC="-I../include \
  -I../servers/slapd \
  -I../build-servers/include"
 popd
@@ -368,8 +368,8 @@ cd build32
 	\
 	--enable-overlays=mod \
 	--enable-shared
-make depend
-%make_build PROGRAMS=""
+make depend LIBTOOL=rlibtool
+%make_build PROGRAMS="" LIBTOOL=rlibtool
 cd ..
 %endif
 
@@ -380,10 +380,10 @@ mkdir -p %{buildroot}%{_libdir}/
 
 %if %{with compat32}
 # Install 32-bit cruft first so the normal install can overwrite it
-%make_install -C build32 STRIP="" PROGRAMS=""
+%make_install -C build32 STRIP="" PROGRAMS="" LIBTOOL=rlibtool
 %endif
 
-%make_install STRIP_OPTS=""
+%make_install STRIP_OPTS="" LIBTOOL=rlibtool
 
 # install check_password module
 pushd openldap-ppolicy-check-password-%{check_password_version}

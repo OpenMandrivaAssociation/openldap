@@ -1,6 +1,6 @@
-diff -up openldap-2.6.10/configure.ac.omv~ openldap-2.6.10/configure.ac
---- openldap-2.6.10/configure.ac.omv~	2026-01-11 18:33:17.277504247 +0000
-+++ openldap-2.6.10/configure.ac	2026-01-11 18:34:57.857591457 +0000
+diff -up openldap-2.6.10/configure.ac.13~ openldap-2.6.10/configure.ac
+--- openldap-2.6.10/configure.ac.13~	2026-01-11 18:56:37.720280284 +0000
++++ openldap-2.6.10/configure.ac	2026-01-11 19:51:16.557148077 +0000
 @@ -821,19 +821,19 @@ dnl Check for module support
  ol_link_modules=no
  WITH_MODULES_ENABLED=no
@@ -29,9 +29,33 @@ diff -up openldap-2.6.10/configure.ac.omv~ openldap-2.6.10/configure.ac
  	fi
  	ol_link_modules=yes
  	WITH_MODULES_ENABLED=yes
-diff -up openldap-2.6.10/servers/slapd/module.c.omv~ openldap-2.6.10/servers/slapd/module.c
---- openldap-2.6.10/servers/slapd/module.c.omv~	2026-01-11 18:35:09.237603463 +0000
-+++ openldap-2.6.10/servers/slapd/module.c	2026-01-11 18:35:15.957610741 +0000
+@@ -2491,16 +2491,16 @@ dnl Sort out defines
+ if test "$ol_enable_slapi" != no ; then
+ 	dnl This check is done also if --enable-modules is used;
+ 	dnl it is duplicated here, 'cause it'd be cached anyway
+-	AC_CHECK_HEADERS(ltdl.h)
++	AC_CHECK_HEADERS(sltdl/sltdl.h)
+ 
+-	if test $ac_cv_header_ltdl_h != yes ; then
+-		AC_MSG_ERROR([could not locate <ltdl.h>])
++	if test $ac_cv_header_sltdl_sltdl_h != yes ; then
++		AC_MSG_ERROR([could not locate <sltdl/sltdl.h>])
+ 	fi
+-	AC_CHECK_LIB(ltdl, lt_dlinit, [
+-		SLAPI_LIBS=-lltdl
++	AC_CHECK_LIB(sltdl, lt_dlinit, [
++		SLAPI_LIBS=-lsltdl
+ 		LIBSLAPI=slapi/libslapi.la
+-		AC_DEFINE(HAVE_LIBLTDL,1,[define if you have libtool -ltdl])
+-	],[AC_MSG_ERROR([could not locate libtool -lltdl])])
++		AC_DEFINE(HAVE_LIBLTDL,1,[define if you have -lsltdl])
++	],[AC_MSG_ERROR([could not locate -lsltdl])])
+ 
+ 	AC_DEFINE(LDAP_SLAPI,1, [define this to add SLAPI code])
+ fi
+diff -up openldap-2.6.10/servers/slapd/module.c.13~ openldap-2.6.10/servers/slapd/module.c
+--- openldap-2.6.10/servers/slapd/module.c.13~	2026-01-11 18:56:23.440244215 +0000
++++ openldap-2.6.10/servers/slapd/module.c	2026-01-11 18:56:23.610244644 +0000
 @@ -19,7 +19,7 @@
  
  #ifdef SLAPD_MODULES
@@ -41,9 +65,9 @@ diff -up openldap-2.6.10/servers/slapd/module.c.omv~ openldap-2.6.10/servers/sla
  
  typedef int (*MODULE_INIT_FN)(
  	int argc,
-diff -up openldap-2.6.10/servers/slapd/overlays/ppolicy.c.omv~ openldap-2.6.10/servers/slapd/overlays/ppolicy.c
---- openldap-2.6.10/servers/slapd/overlays/ppolicy.c.omv~	2026-01-11 18:36:21.207688315 +0000
-+++ openldap-2.6.10/servers/slapd/overlays/ppolicy.c	2026-01-11 18:36:31.817702050 +0000
+diff -up openldap-2.6.10/servers/slapd/overlays/ppolicy.c.13~ openldap-2.6.10/servers/slapd/overlays/ppolicy.c
+--- openldap-2.6.10/servers/slapd/overlays/ppolicy.c.13~	2025-05-22 18:56:21.000000000 +0100
++++ openldap-2.6.10/servers/slapd/overlays/ppolicy.c	2026-01-11 18:56:23.620244669 +0000
 @@ -33,7 +33,7 @@
  #include "slap.h"
  #ifdef SLAPD_MODULES
@@ -53,9 +77,9 @@ diff -up openldap-2.6.10/servers/slapd/overlays/ppolicy.c.omv~ openldap-2.6.10/s
  #endif
  #include <ac/errno.h>
  #include <ac/time.h>
-diff -up openldap-2.6.10/servers/slapd/overlays/remoteauth.c.omv~ openldap-2.6.10/servers/slapd/overlays/remoteauth.c
---- openldap-2.6.10/servers/slapd/overlays/remoteauth.c.omv~	2026-01-11 18:36:00.287662125 +0000
-+++ openldap-2.6.10/servers/slapd/overlays/remoteauth.c	2026-01-11 18:36:12.437677190 +0000
+diff -up openldap-2.6.10/servers/slapd/overlays/remoteauth.c.13~ openldap-2.6.10/servers/slapd/overlays/remoteauth.c
+--- openldap-2.6.10/servers/slapd/overlays/remoteauth.c.13~	2025-05-22 18:56:21.000000000 +0100
++++ openldap-2.6.10/servers/slapd/overlays/remoteauth.c	2026-01-11 18:56:23.620244669 +0000
 @@ -22,7 +22,7 @@
  #include <ldap.h>
  #if SLAPD_MODULES
@@ -65,9 +89,9 @@ diff -up openldap-2.6.10/servers/slapd/overlays/remoteauth.c.omv~ openldap-2.6.1
  #endif
  #include <ac/errno.h>
  #include <ac/time.h>
-diff -up openldap-2.6.10/servers/slapd/slapi/plugin.c.omv~ openldap-2.6.10/servers/slapd/slapi/plugin.c
---- openldap-2.6.10/servers/slapd/slapi/plugin.c.omv~	2026-01-11 18:35:27.517623583 +0000
-+++ openldap-2.6.10/servers/slapd/slapi/plugin.c	2026-01-11 18:35:42.777641144 +0000
+diff -up openldap-2.6.10/servers/slapd/slapi/plugin.c.13~ openldap-2.6.10/servers/slapd/slapi/plugin.c
+--- openldap-2.6.10/servers/slapd/slapi/plugin.c.13~	2025-05-22 18:56:21.000000000 +0100
++++ openldap-2.6.10/servers/slapd/slapi/plugin.c	2026-01-11 18:56:23.620244669 +0000
 @@ -26,14 +26,14 @@
   * Note: if ltdl.h is not available, slapi should not be compiled
   */
