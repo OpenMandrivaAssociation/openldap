@@ -42,7 +42,7 @@
 
 Name: openldap
 Version: 2.6.10
-Release: 2
+Release: 3
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -89,6 +89,7 @@ Patch202: openldap-2.6-cross.patch
 BuildRequires:	automake
 BuildRequires:	libtool-base
 BuildRequires:	slibtool
+BuildRequires:	pkgconfig(sltdl)
 BuildRequires: autoconf
 BuildRequires: pkgconfig(libsasl2)
 BuildRequires: locales-extra-charsets
@@ -248,7 +249,7 @@ this package only if you plan to develop or will need to compile
 
 %prep
 %autosetup -p1 -a 10
-autoconf
+autoreconf
 
 # build smbk5pwd with other overlays
 ln -s ../../../contrib/slapd-modules/smbk5pwd/smbk5pwd.c servers/slapd/overlays
