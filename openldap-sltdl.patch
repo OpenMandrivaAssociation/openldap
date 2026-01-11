@@ -1,0 +1,87 @@
+diff -up openldap-2.6.10/configure.ac.omv~ openldap-2.6.10/configure.ac
+--- openldap-2.6.10/configure.ac.omv~	2026-01-11 18:33:17.277504247 +0000
++++ openldap-2.6.10/configure.ac	2026-01-11 18:34:57.857591457 +0000
+@@ -821,19 +821,19 @@ dnl Check for module support
+ ol_link_modules=no
+ WITH_MODULES_ENABLED=no
+ if test $ol_enable_modules != no ; then
+-	AC_CHECK_HEADERS(ltdl.h)
++	AC_CHECK_HEADERS(sltdl/sltdl.h)
+ 
+-	if test $ac_cv_header_ltdl_h = no ; then
+-		AC_MSG_ERROR([could not locate libtool ltdl.h])
++	if test $ac_cv_header_sltdl_sltdl_h = no ; then
++		AC_MSG_ERROR([could not locate sltdl.h])
+ 	fi
+ 
+-	AC_CHECK_LIB(ltdl, lt_dlinit, [
+-		MODULES_LIBS=-lltdl
+-		AC_DEFINE(HAVE_LIBLTDL,1,[define if you have libtool -ltdl])
++	AC_CHECK_LIB(sltdl, lt_dlinit, [
++		MODULES_LIBS=-lsltdl
++		AC_DEFINE(HAVE_LIBLTDL,1,[define if you have -lsltdl])
+ 	])
+ 
+-	if test "$ac_cv_lib_ltdl_lt_dlinit" = no ; then
+-		AC_MSG_ERROR([could not locate libtool -lltdl])
++	if test "$ac_cv_lib_lstdl_lt_dlinit" = no ; then
++		AC_MSG_ERROR([could not locate libtool -lsltdl])
+ 	fi
+ 	ol_link_modules=yes
+ 	WITH_MODULES_ENABLED=yes
+diff -up openldap-2.6.10/servers/slapd/module.c.omv~ openldap-2.6.10/servers/slapd/module.c
+--- openldap-2.6.10/servers/slapd/module.c.omv~	2026-01-11 18:35:09.237603463 +0000
++++ openldap-2.6.10/servers/slapd/module.c	2026-01-11 18:35:15.957610741 +0000
+@@ -19,7 +19,7 @@
+ 
+ #ifdef SLAPD_MODULES
+ 
+-#include <ltdl.h>
++#include <sltdl/sltdl.h>
+ 
+ typedef int (*MODULE_INIT_FN)(
+ 	int argc,
+diff -up openldap-2.6.10/servers/slapd/overlays/ppolicy.c.omv~ openldap-2.6.10/servers/slapd/overlays/ppolicy.c
+--- openldap-2.6.10/servers/slapd/overlays/ppolicy.c.omv~	2026-01-11 18:36:21.207688315 +0000
++++ openldap-2.6.10/servers/slapd/overlays/ppolicy.c	2026-01-11 18:36:31.817702050 +0000
+@@ -33,7 +33,7 @@
+ #include "slap.h"
+ #ifdef SLAPD_MODULES
+ #define LIBLTDL_DLL_IMPORT	/* Win32: don't re-export libltdl's symbols */
+-#include <ltdl.h>
++#include <sltdl/sltdl.h>
+ #endif
+ #include <ac/errno.h>
+ #include <ac/time.h>
+diff -up openldap-2.6.10/servers/slapd/overlays/remoteauth.c.omv~ openldap-2.6.10/servers/slapd/overlays/remoteauth.c
+--- openldap-2.6.10/servers/slapd/overlays/remoteauth.c.omv~	2026-01-11 18:36:00.287662125 +0000
++++ openldap-2.6.10/servers/slapd/overlays/remoteauth.c	2026-01-11 18:36:12.437677190 +0000
+@@ -22,7 +22,7 @@
+ #include <ldap.h>
+ #if SLAPD_MODULES
+ #define LIBLTDL_DLL_IMPORT /* Win32: don't re-export libltdl's symbols */
+-#include <ltdl.h>
++#include <sltdl/sltdl.h>
+ #endif
+ #include <ac/errno.h>
+ #include <ac/time.h>
+diff -up openldap-2.6.10/servers/slapd/slapi/plugin.c.omv~ openldap-2.6.10/servers/slapd/slapi/plugin.c
+--- openldap-2.6.10/servers/slapd/slapi/plugin.c.omv~	2026-01-11 18:35:27.517623583 +0000
++++ openldap-2.6.10/servers/slapd/slapi/plugin.c	2026-01-11 18:35:42.777641144 +0000
+@@ -26,14 +26,14 @@
+  * Note: if ltdl.h is not available, slapi should not be compiled
+  */
+ 
+-#ifdef HAVE_LTDL_H
++#ifdef HAVE_SLTDL_SLTDL_H
+ #include "ldap_pvt_thread.h"
+ #include "slap.h"
+ #include "slap-config.h"
+ #include "slapi.h"
+ #include "lutil.h"
+ 
+-#include <ltdl.h>
++#include <sltdl/sltdl.h>
+ 
+ static int slapi_int_load_plugin( Slapi_PBlock *, const char *, const char *, int, 
+ 	SLAPI_FUNC *, lt_dlhandle *, ConfigArgs *c );
