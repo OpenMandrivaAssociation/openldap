@@ -85,6 +85,7 @@ Patch201: openldap-2.6.6-compat-2.4.patch
 # doesn't work reliably when crosscompiling, so
 # disable it
 Patch202: openldap-2.6-cross.patch
+Patch203: openldap-sltdl.patch
 
 BuildRequires:	automake
 BuildRequires:	libtool-base
