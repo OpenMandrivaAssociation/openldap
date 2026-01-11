@@ -1,0 +1,241 @@
+diff -up openldap-2.6.10/build/rules.mk.9~ openldap-2.6.10/build/rules.mk
+--- openldap-2.6.10/build/rules.mk.9~	2025-05-22 18:56:21.000000000 +0100
++++ openldap-2.6.10/build/rules.mk	2026-01-11 22:18:44.000247494 +0000
+@@ -16,19 +16,34 @@
+ # Makefile Template for Programs
+ #
+ 
+-all-common: $(PROGRAMS) FORCE
++all-no lint-no lint5-no depend-no: FORCE
++	@echo "run configure with $(BUILD_OPT) to make $(BINBSE)"
++
++all-common: all-$(BUILD_BIN)
++
++depend-common: depend-$(BUILD_BIN)
++
++lint: lint-$(BUILD_BIN)
++
++lint5: lint5-$(BUILD_BIN)
++
++all-local-bin:
++all-yes: $(PROGRAMS) all-local-bin FORCE
+ 
+ clean-common: 	FORCE
+ 	$(RM) $(PROGRAMS) $(XPROGRAMS) $(XSRCS) *.o *.lo a.out core *.core \
+ 		    .libs/* *.exe
+ 
+-depend-common: FORCE
++depend-local-bin:
++depend-yes: depend-local-bin FORCE
+ 	$(MKDEP) $(DEFS) $(DEFINES) $(SRCS)
+ 
+-lint: FORCE
++lint-local-bin:
++lint-yes: lint-local-bin FORCE
+ 	$(LINT) $(DEFS) $(DEFINES) $(SRCS)
+ 
+-lint5: FORCE
++lint5-local-bin:
++lint5: lint5-local-bin FORCE
+ 	$(5LINT) $(DEFS) $(DEFINES) $(SRCS)
+ 
+ Makefile: $(top_srcdir)/build/rules.mk
+diff -up openldap-2.6.10/clients/tools/Makefile.in.9~ openldap-2.6.10/clients/tools/Makefile.in
+--- openldap-2.6.10/clients/tools/Makefile.in.9~	2025-05-22 18:56:21.000000000 +0100
++++ openldap-2.6.10/clients/tools/Makefile.in	2026-01-11 22:18:44.000247494 +0000
+@@ -23,10 +23,14 @@ OBJS	= ldapsearch.o ldapmodify.o ldapdel
+ LDAP_INCDIR= ../../include       
+ LDAP_LIBDIR= ../../libraries
+ 
++BUILD_OPT = "--enable-tools"
++BUILD_BIN = @BUILD_TOOLS@
++
+ MKVOPTS = -s
+ 
+ XLIBS =  $(LDAP_L)
+ XXLIBS	= $(SECURITY_LIBS) $(LUTIL_LIBS) $(CLIENT_LIBS)
++UNIX_LINK_LIBS = $(LTHREAD_LIBS)
+ 
+ XSRCS	= ldsversion.c ldmversion.c lddversion.c ldrversion.c ldpversion.c \
+ 	ldwversion.c ldvversion.c ldcversion.c ldeversion.c lduversion.c
+@@ -34,36 +38,37 @@ XSRCS	= ldsversion.c ldmversion.c lddver
+ PROGRAMS = ldapsearch ldapmodify ldapdelete ldapmodrdn \
+ 	ldappasswd ldapwhoami ldapvc ldapcompare ldapexop ldapurl
+ 
++all-local-bin: $(PROGRAMS)
+ 
+ ldapsearch:	ldsversion.o
+-	$(LTLINK) -o $@ ldapsearch.o common.o ldsversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapsearch.o common.o ldsversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldapmodify:	ldmversion.o
+-	$(LTLINK) -o $@ ldapmodify.o common.o ldmversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapmodify.o common.o ldmversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldapdelete:	lddversion.o
+-	$(LTLINK) -o $@ ldapdelete.o common.o lddversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapdelete.o common.o lddversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldapmodrdn:	ldrversion.o
+-	$(LTLINK) -o $@ ldapmodrdn.o common.o ldrversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapmodrdn.o common.o ldrversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldappasswd:	ldpversion.o
+-	$(LTLINK) -o $@ ldappasswd.o common.o ldpversion.o $(LIBS)
++	$(LTLINK) -o $@ ldappasswd.o common.o ldpversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldapwhoami:	ldwversion.o
+-	$(LTLINK) -o $@ ldapwhoami.o common.o ldwversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapwhoami.o common.o ldwversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldapvc:	ldvversion.o
+-	$(LTLINK) -o $@ ldapvc.o common.o ldvversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapvc.o common.o ldvversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldapcompare: ldcversion.o
+-	$(LTLINK) -o $@ ldapcompare.o common.o ldcversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapcompare.o common.o ldcversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldapexop: ldeversion.o
+-	$(LTLINK) -o $@ ldapexop.o common.o ldeversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapexop.o common.o ldeversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldapurl: lduversion.o
+-	$(LTLINK) -o $@ ldapurl.o lduversion.o $(LIBS)
++	$(LTLINK) -o $@ ldapurl.o lduversion.o $(LIBS) $(LINK_LIBS)
+ 
+ ldsversion.c: Makefile
+ 	@-$(RM) $@
+@@ -126,13 +131,15 @@ lduversion.c: Makefile
+ lduversion.o: ldapurl.o $(XLIBS)
+ 
+ install-local:	FORCE
+-	-$(MKDIR) $(DESTDIR)$(bindir)
+-	@(								\
+-	    for prg in $(PROGRAMS); do					\
+-		$(LTINSTALL) $(INSTALLFLAGS) $(STRIP_OPTS) -m 755 $$prg$(EXEEXT)	\
+-		    $(DESTDIR)$(bindir);				\
+-	    done							\
+-	)
+-	$(RM) $(DESTDIR)$(bindir)/ldapadd$(EXEEXT)
+-	$(LN_S) $(DESTDIR)$(bindir)/ldapmodify$(EXEEXT) $(DESTDIR)$(bindir)/ldapadd$(EXEEXT)
++	if test "$(BUILD_BIN)" = "yes"; then								\
++		-$(MKDIR) $(DESTDIR)$(bindir);								\
++		@(											\
++		    for prg in $(PROGRAMS); do								\
++			$(LTINSTALL) $(INSTALLFLAGS) $(STRIP_OPTS) -m 755 $$prg$(EXEEXT)		\
++			    $(DESTDIR)$(bindir);							\
++		    done										\
++		)											\
++		$(RM) $(DESTDIR)$(bindir)/ldapadd$(EXEEXT);						\
++		$(LN_S) $(DESTDIR)$(bindir)/ldapmodify$(EXEEXT) $(DESTDIR)$(bindir)/ldapadd$(EXEEXT);	\
++	fi
+ 
+diff -up openldap-2.6.10/configure.ac.9~ openldap-2.6.10/configure.ac
+--- openldap-2.6.10/configure.ac.9~	2025-05-22 18:56:21.000000000 +0100
++++ openldap-2.6.10/configure.ac	2026-01-11 22:19:22.860392224 +0000
+@@ -289,6 +289,7 @@ OL_ARG_ENABLE(modules, [AS_HELP_STRING([
+ OL_ARG_ENABLE(rlookups, [AS_HELP_STRING([--enable-rlookups], [enable reverse lookups of client hostnames])], no)dnl
+ OL_ARG_ENABLE(slapi, [AS_HELP_STRING([--enable-slapi], [enable SLAPI support (experimental)])], no)dnl
+ OL_ARG_ENABLE(slp, [AS_HELP_STRING([--enable-slp], [enable SLPv2 support])], no)dnl
++OL_ARG_ENABLE(tools, [AS_HELP_STRING([--enable-tools], [enable client tools])], yes)dnl
+ OL_ARG_ENABLE(wrappers, [AS_HELP_STRING([--enable-wrappers], [enable tcp wrapper support])], no)dnl
+ 
+ dnl ----------------------------------------------------------------
+@@ -564,6 +565,8 @@ BALANCER_LIBS=
+ BUILD_SLAPD=no
+ BUILD_BALANCER=no
+ 
++BUILD_TOOLS=no
++
+ BUILD_THREAD=no
+ 
+ BUILD_SLAPI=no
+@@ -1794,10 +1797,18 @@ dnl	LIBS="$save_LIBS"
+ fi  
+ 
+ if test $ol_link_threads = no ; then
++	if test $ol_enable_ldap != no; then
++		AC_MSG_ERROR([ldap requires thread support])
++	fi
++
+ 	if test $ol_enable_slapd != no; then
+ 		AC_MSG_ERROR([slapd requires thread support])
+ 	fi
+ 
++	if test $ol_enable_tools != no; then
++		AC_MSG_ERROR([client tools require thread support])
++	fi
++
+ 	if test $ol_with_threads = yes ; then
+ 		AC_MSG_ERROR([no suitable thread support])
+ 	fi
+@@ -2560,6 +2571,9 @@ if test "$ol_link_modules" != no ; then
+ 	BUILD_SLAPD=yes
+ 	SLAPD_MODULES_LDFLAGS="-dlopen self"
+ fi
++if test "$ol_enable_tools" != no ; then
++	BUILD_TOOLS=$ol_enable_tools
++fi
+ 
+ AC_DEFINE(SLAPD_MOD_STATIC,1,[statically linked module])
+ AC_DEFINE(SLAPD_MOD_DYNAMIC,2,[dynamically linked module])
+@@ -3137,6 +3151,7 @@ AC_SUBST(OL_VERSIONED_SYMBOLS)
+ AC_SUBST(DO_VERSIONED_SYMBOLS)
+ 
+ AC_SUBST(BUILD_SLAPD)
++AC_SUBST(BUILD_TOOLS)
+ dnl slapi
+   AC_SUBST(BUILD_SLAPI)
+   AC_SUBST(SLAPD_SLAPI_DEPEND)
+diff -up openldap-2.6.10/libraries/libldap/Makefile.in.9~ openldap-2.6.10/libraries/libldap/Makefile.in
+--- openldap-2.6.10/libraries/libldap/Makefile.in.9~	2025-05-22 18:56:21.000000000 +0100
++++ openldap-2.6.10/libraries/libldap/Makefile.in	2026-01-11 22:20:13.140579485 +0000
+@@ -61,19 +61,19 @@ UNIX_LINK_LIBS = $(LDAP_LIBLBER_LA) $(AC
+ @DO_VERSIONED_SYMBOLS@SYMBOL_VERSION_FLAGS=$(OL_VERSIONED_SYMBOLS)$(srcdir)/ldap.map
+ 
+ apitest:	$(XLIBS) apitest.o
+-	$(LTLINK) -o $@ apitest.o $(LIBS)
++	$(LTLINK) -o $@ apitest.o $(LIBS) $(LINK_LIBS)
+ dntest:	$(XLIBS) dntest.o
+-	$(LTLINK) -o $@ dntest.o $(LIBS)
++	$(LTLINK) -o $@ dntest.o $(LIBS) $(LINK_LIBS)
+ ftest:	$(XLIBS) ftest.o
+-	$(LTLINK) -o $@ ftest.o $(LIBS)
++	$(LTLINK) -o $@ ftest.o $(LIBS) $(LINK_LIBS)
+ ltest:	$(XLIBS) test.o
+-	$(LTLINK) -o $@ test.o $(LIBS)
++	$(LTLINK) -o $@ test.o $(LIBS) $(LINK_LIBS)
+ testavl: $(XLIBS) testavl.o
+-	$(LTLINK) -o $@ testavl.o $(LIBS)
++	$(LTLINK) -o $@ testavl.o $(LIBS) $(LINK_LIBS)
+ testtavl: $(XLIBS) testtavl.o
+-	$(LTLINK) -o $@ testtavl.o $(LIBS)
++	$(LTLINK) -o $@ testtavl.o $(LIBS) $(LINK_LIBS)
+ urltest: $(XLIBS) urltest.o
+-	$(LTLINK) -o $@ urltest.o $(LIBS)
++	$(LTLINK) -o $@ urltest.o $(LIBS) $(LINK_LIBS)
+ 
+ 
+ CFFILES=ldap.conf
+diff -up openldap-2.6.10/tests/progs/Makefile.in.9~ openldap-2.6.10/tests/progs/Makefile.in
+--- openldap-2.6.10/tests/progs/Makefile.in.9~	2025-05-22 18:56:21.000000000 +0100
++++ openldap-2.6.10/tests/progs/Makefile.in	2026-01-11 22:18:44.000247494 +0000
+@@ -24,6 +24,8 @@ SRCS     = slapd-common.c \
+ LDAP_INCDIR= ../../include
+ LDAP_LIBDIR= ../../libraries
+ 
++BUILD_BIN = yes
++
+ XLIBS    = $(LDAP_LIBLDAP_LA) $(LDAP_LIBLUTIL_A) $(LDAP_LIBLDAP_LA) $(LDAP_LIBLBER_LA)
+ XXLIBS	 = $(SECURITY_LIBS) $(LUTIL_LIBS)
+ XXXLIBS  = $(LTHREAD_LIBS)
+@@ -33,7 +35,7 @@ OBJS     = slapd-common.o
+ # build-tools: FORCE
+ # $(MAKE) $(MFLAGS) load-tools
+ 
+-# load-tools: $(PROGRAMS)
++all-local-bin: $(PROGRAMS)
+ 
+ slapd-tester: slapd-tester.o $(OBJS) $(XLIBS)
+ 	$(LTLINK) -o $@ slapd-tester.o $(OBJS) $(LIBS)

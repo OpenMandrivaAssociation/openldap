@@ -74,6 +74,7 @@ Patch6: openldap-switch-to-lt_dlopenadvise-to-get-RTLD_GLOBAL-set.patch
 # System-wide default for CA certs
 Patch7: openldap-openssl-manpage-defaultCA.patch
 Patch8: openldap-add-export-symbols-LDAP_CONNECTIONLESS.patch
+Patch9: https://git.openldap.org/openldap/openldap/-/merge_requests/303.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
@@ -278,6 +279,7 @@ export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
 # to something with a yielding select -- this assumption may not
 # always be true -- some ifos/ifarch switches may be necessary
 
+LIBTOOL=slibtool \
 %configure \
 	--enable-debug \
 	--enable-dynamic \
@@ -326,10 +328,10 @@ export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
 	\
 	--libexecdir=%{_libdir}
 
-%make_build LIBTOOL=rlibtool
+%make_build LIBTOOL=slibtool
 
 pushd openldap-ppolicy-check-password-%{check_password_version}
-%make_build CC="%{__cc}" LIBTOOL=rlibtool LDAP_INC="-I../include \
+%make_build CC="%{__cc}" LIBTOOL=slibtool LDAP_INC="-I../include \
  -I../servers/slapd \
  -I../build-servers/include"
 popd
@@ -368,8 +370,8 @@ cd build32
 	\
 	--enable-overlays=mod \
 	--enable-shared
-make depend LIBTOOL=rlibtool
-%make_build PROGRAMS="" LIBTOOL=rlibtool
+make depend LIBTOOL=slibtool
+%make_build PROGRAMS="" LIBTOOL=slibtool
 cd ..
 %endif
 
@@ -380,10 +382,10 @@ mkdir -p %{buildroot}%{_libdir}/
 
 %if %{with compat32}
 # Install 32-bit cruft first so the normal install can overwrite it
-%make_install -C build32 STRIP="" PROGRAMS="" LIBTOOL=rlibtool
+%make_install -C build32 STRIP="" PROGRAMS="" LIBTOOL=slibtool
 %endif
 
-%make_install STRIP_OPTS="" LIBTOOL=rlibtool
+%make_install STRIP_OPTS="" LIBTOOL=slibtool
 
 # install check_password module
 pushd openldap-ppolicy-check-password-%{check_password_version}
