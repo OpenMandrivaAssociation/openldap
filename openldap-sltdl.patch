@@ -65,24 +65,6 @@ diff -up openldap-2.6.10/servers/slapd/module.c.13~ openldap-2.6.10/servers/slap
  
  typedef int (*MODULE_INIT_FN)(
  	int argc,
-@@ -119,16 +119,7 @@ int module_unload( const char *file_name
- 
- static lt_dlhandle slapd_lt_dlopenext_global( const char *filename )
- {
--	lt_dlhandle handle = 0;
--	lt_dladvise advise;
--
--	if (!lt_dladvise_init (&advise) && !lt_dladvise_ext (&advise)
--			&& !lt_dladvise_global (&advise))
--		handle = lt_dlopenadvise (filename, advise);
--
--	lt_dladvise_destroy (&advise);
--
--	return handle;
-+	return lt_dlopenext (filename);
- }
- 
- int module_load(const char* file_name, int argc, char *argv[])
 diff -up openldap-2.6.10/servers/slapd/overlays/ppolicy.c.13~ openldap-2.6.10/servers/slapd/overlays/ppolicy.c
 --- openldap-2.6.10/servers/slapd/overlays/ppolicy.c.13~	2025-05-22 18:56:21.000000000 +0100
 +++ openldap-2.6.10/servers/slapd/overlays/ppolicy.c	2026-01-11 20:08:39.919386046 +0000

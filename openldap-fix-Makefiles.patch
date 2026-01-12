@@ -1,0 +1,20 @@
+diff -up openldap-2.6.10/clients/tools/Makefile.in.15~ openldap-2.6.10/clients/tools/Makefile.in
+--- openldap-2.6.10/clients/tools/Makefile.in.15~	2026-01-12 01:01:33.534743938 +0100
++++ openldap-2.6.10/clients/tools/Makefile.in	2026-01-12 01:03:30.899248283 +0100
+@@ -132,13 +132,13 @@ lduversion.o: ldapurl.o $(XLIBS)
+ 
+ install-local:	FORCE
+ 	if test "$(BUILD_BIN)" = "yes"; then								\
+-		-$(MKDIR) $(DESTDIR)$(bindir);								\
+-		@(											\
++		$(MKDIR) -p $(DESTDIR)$(bindir);							\
++		(											\
+ 		    for prg in $(PROGRAMS); do								\
+ 			$(LTINSTALL) $(INSTALLFLAGS) $(STRIP_OPTS) -m 755 $$prg$(EXEEXT)		\
+ 			    $(DESTDIR)$(bindir);							\
+ 		    done										\
+-		)											\
++		);											\
+ 		$(RM) $(DESTDIR)$(bindir)/ldapadd$(EXEEXT);						\
+ 		$(LN_S) $(DESTDIR)$(bindir)/ldapmodify$(EXEEXT) $(DESTDIR)$(bindir)/ldapadd$(EXEEXT);	\
+ 	fi

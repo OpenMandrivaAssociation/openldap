@@ -1,6 +1,6 @@
 # wine uses openldap
 %ifarch %{x86_64}
-%bcond_without compat32
+%bcond_with compat32
 %endif
 
 %global _hardened_build 1
@@ -65,12 +65,6 @@ Patch3: openldap-smbk5pwd-overlay.patch
 Patch4: openldap-ai-addrconfig.patch
 Patch5: openldap-allop-overlay.patch
 
-# fix back_perl problems with lt_dlopen()
-# might cause crashes because of symbol collisions
-# the proper fix is to link all perl modules against libperl
-# http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=327585
-Patch6: openldap-switch-to-lt_dlopenadvise-to-get-RTLD_GLOBAL-set.patch
-
 # System-wide default for CA certs
 Patch7: openldap-openssl-manpage-defaultCA.patch
 Patch8: openldap-add-export-symbols-LDAP_CONNECTIONLESS.patch
@@ -87,6 +81,7 @@ Patch201: openldap-2.6.6-compat-2.4.patch
 # disable it
 Patch202: openldap-2.6-cross.patch
 Patch203: openldap-sltdl.patch
+Patch204: openldap-fix-Makefiles.patch
 
 BuildRequires:	automake
 BuildRequires:	libtool-base
@@ -279,7 +274,7 @@ export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
 # to something with a yielding select -- this assumption may not
 # always be true -- some ifos/ifarch switches may be necessary
 
-LIBTOOL=slibtool \
+LIBTOOL=slibtool-shared \
 %configure \
 	--enable-debug \
 	--enable-dynamic \
@@ -328,10 +323,10 @@ LIBTOOL=slibtool \
 	\
 	--libexecdir=%{_libdir}
 
-%make_build LIBTOOL=slibtool
+%make_build LIBTOOL=slibtool-shared
 
 pushd openldap-ppolicy-check-password-%{check_password_version}
-%make_build CC="%{__cc}" LIBTOOL=slibtool LDAP_INC="-I../include \
+%make_build CC="%{__cc}" LIBTOOL=slibtool-shared LDAP_INC="-I../include \
  -I../servers/slapd \
  -I../build-servers/include"
 popd
@@ -370,22 +365,21 @@ cd build32
 	\
 	--enable-overlays=mod \
 	--enable-shared
-make depend LIBTOOL=slibtool
-%make_build PROGRAMS="" LIBTOOL=slibtool
+make depend LIBTOOL=slibtool-shared
+%make_build PROGRAMS="" LIBTOOL=slibtool-shared
 cd ..
 %endif
 
 
 %install
-
 mkdir -p %{buildroot}%{_libdir}/
 
 %if %{with compat32}
 # Install 32-bit cruft first so the normal install can overwrite it
-%make_install -C build32 STRIP="" PROGRAMS="" LIBTOOL=slibtool
+%make_install -C build32 STRIP="" PROGRAMS="" LIBTOOL=slibtool-shared
 %endif
 
-%make_install STRIP_OPTS="" LIBTOOL=slibtool
+%make_install STRIP_OPTS="" LIBTOOL=slibtool-shared
 
 # install check_password module
 pushd openldap-ppolicy-check-password-%{check_password_version}
@@ -510,8 +504,6 @@ popd
 
 # tweak permissions on the libraries to make sure they're correct
 chmod 0755 %{buildroot}%{_libdir}/lib*.so*
-chmod 0644 %{buildroot}%{_libdir}/lib*.*a
-chmod 0644 %{buildroot}%{_libdir}/openldap/*.la
 
 # slapd.conf(5) is obsoleted since 2.3, see slapd-config(5)
 mkdir -p %{buildroot}%{_datadir}
@@ -524,9 +516,6 @@ rm %{buildroot}%{_sysconfdir}/openldap/slapd.ldif
 
 # move doc files out of _sysconfdir
 mv %{buildroot}%{_sysconfdir}/openldap/schema/README README.schema
-
-# remove files which we don't want packaged
-rm %{buildroot}%{_libdir}/*.la  # because we do not want files in %{_libdir}/openldap/ removed, yet
 
 # Create the ldap user and group
 mkdir -p %{buildroot}%{_sysusersdir}
