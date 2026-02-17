@@ -1,6 +1,6 @@
 # wine uses openldap
 %ifarch %{x86_64}
-%bcond_with compat32
+%bcond_without compat32
 %endif
 
 %global _hardened_build 1
@@ -41,8 +41,8 @@
 %endif
 
 Name: openldap
-Version: 2.6.10
-Release: 3
+Version: 2.6.12
+Release: 1
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -52,7 +52,6 @@ Source1: slapd.service
 Source2: slapd.tmpfiles
 Source3: slapd.ldif
 Source4: ldap.conf
-Source5: UPGRADE_INSTRUCTIONS
 Source10: https://github.com/ltb-project/openldap-ppolicy-check-password/archive/v%{check_password_version}/openldap-ppolicy-check-password-%{check_password_version}.tar.gz
 Source50: libexec-functions
 Source52: libexec-check-config.sh
@@ -84,7 +83,6 @@ Patch203: openldap-sltdl.patch
 Patch204: openldap-fix-Makefiles.patch
 
 BuildRequires:	automake
-BuildRequires:	libtool-base
 BuildRequires:	slibtool
 BuildRequires:	pkgconfig(sltdl)
 BuildRequires: autoconf
@@ -92,7 +90,6 @@ BuildRequires: pkgconfig(libsasl2)
 BuildRequires: locales-extra-charsets
 BuildRequires: groff
 BuildRequires: krb5-devel
-BuildRequires: libltdl-devel
 BuildRequires: pkgconfig(libevent)
 BuildRequires: make
 BuildRequires: pkgconfig(libcrypto)
@@ -111,7 +108,6 @@ BuildRequires: devel(libkrb5)
 BuildRequires: devel(libncurses)
 BuildRequires: devel(libssl)
 BuildRequires: devel(libcom_err)
-BuildRequires: devel(libltdl)
 BuildRequires: libcrypt-devel
 %endif
 
@@ -280,10 +276,10 @@ LIBTOOL=slibtool-shared \
 	--enable-dynamic \
 	--enable-versioning \
 	\
+	--sharedstatedir=/srv/ldap \
 	--enable-dynacl \
 	--enable-cleartext \
 	--enable-crypt \
-	--enable-lmpasswd \
 	--enable-spasswd \
 	--enable-modules \
 %if %{with perl}
@@ -291,17 +287,12 @@ LIBTOOL=slibtool-shared \
 %else
 	--disable-perl \
 %endif
-	--enable-rewrite \
 	--enable-rlookups \
 	--enable-slapi \
 	--disable-slp \
 	\
 	--enable-backends=mod \
-	--enable-bdb=yes \
-	--enable-hdb=yes \
 	--enable-mdb=yes \
-	--enable-monitor=yes \
-	--disable-ndb \
 	--disable-sql \
 	--disable-wt \
 	\
@@ -329,7 +320,7 @@ pushd openldap-ppolicy-check-password-%{check_password_version}
 %make_build CC="%{__cc}" LIBTOOL=slibtool-shared LDAP_INC="-I../include \
  -I../servers/slapd \
  -I../build-servers/include"
-popd
+popd #" <-- workaround for a vim syntax highlighting bug, ignore
 
 %if %{with compat32}
 CONFIGURE_TOP="$(pwd)"
@@ -338,6 +329,7 @@ cd build32
 %configure32 \
 	--with-subdir=%{name} \
 	--localstatedir=/var/run/ldap \
+	--sharedstatedir=/srv/ldap \
 	--enable-dynamic \
 	--enable-syslog \
 	--enable-ipv6 \
@@ -405,9 +397,9 @@ popd
 mkdir -p %{buildroot}%{_sysconfdir}/openldap/certs
 
 # setup data and runtime directories
-mkdir -p %{buildroot}%{_sharedstatedir}
+mkdir -p %{buildroot}/srv
 mkdir -p %{buildroot}%{_localstatedir}
-install -m 0700 -d %{buildroot}%{_sharedstatedir}/ldap
+install -m 0700 -d %{buildroot}/srv/ldap
 install -m 0755 -d %{buildroot}%{_localstatedir}/run/openldap
 
 # setup autocreation of runtime directories on tmpfs
@@ -509,7 +501,6 @@ chmod 0755 %{buildroot}%{_libdir}/lib*.so*
 mkdir -p %{buildroot}%{_datadir}
 install -m 0755 -d %{buildroot}%{_datadir}/openldap-servers
 install -m 0644 %SOURCE3 %{buildroot}%{_datadir}/openldap-servers/slapd.ldif
-install -m 0644 %SOURCE5 %{buildroot}%{_datadir}/openldap-servers/UPGRADE_INSTRUCTIONS
 install -m 0700 -d %{buildroot}%{_sysconfdir}/openldap/slapd.d
 rm %{buildroot}%{_sysconfdir}/openldap/slapd.conf
 rm %{buildroot}%{_sysconfdir}/openldap/slapd.ldif
@@ -521,16 +512,34 @@ mv %{buildroot}%{_sysconfdir}/openldap/schema/README README.schema
 mkdir -p %{buildroot}%{_sysusersdir}
 cat >%{buildroot}%{_sysusersdir}/ldap.conf <<'EOF'
 g ldap 55 - -
-u ldap 55:55 "OpenLDAP server" %{_sharedstatedir}/ldap /sbin/nologin
+u ldap 55:55 "OpenLDAP server" /srv/ldap /sbin/nologin
 EOF
 
+# Move from /var/lib/ldap to /srv/ldap
+# Old name prior to 2.6.12-1, after 6.0, 2026-02-17
+%pretrans servers -p <lua>
+omv = require("omv")
+omv.dir2Symlink("/var/lib/ldap", "/srv/ldap")
+
 %post servers
+TARGET_DN=$(slapcat -b cn=config 2>/dev/null | \
+	awk '/^dn: / {dn=$2} /^olcDbDirectory:[[:space:]]*\/var\/lib\/ldap/ {print dn}')
+if [[ -n "$TARGET_DN" ]]; then
+	MIGRATE_LDIF="dn: $TARGET_DN
+changetype: modify
+replace: olcDbDirectory
+olcDbDirectory: /srv/ldap"
+	if slapcat -b cn=config 2>/dev/null |grep -qE '^olcDbDirectory:[[:space:]]*/var/lib/ldap$'; then
+		echo "$MIGRATE_LDIF" | ldapmodify -Y EXTERNAL -H ldapi:/// 2>/dev/null || \
+		echo "$MIGRATE_LDIF" | slapmodify -b cn=config 2>/dev/null || :
+	fi
+	# Just in case slapmodify changed it to root
+	chown -R ldap:ldap /etc/openldap/slapd.d
+fi
+# End /var/lib/ldap to /srv/ldap move
+
 %systemd_post slapd.service
 
-# If it's not upgrade - we remove the UPGRADE_INSTRUCTIONS
-if [ $1 -lt 2 ] ; then
-    rm %{_datadir}/openldap-servers/UPGRADE_INSTRUCTIONS
-fi
 # generate configuration if necessary
 if [[ ! -f %{_sysconfdir}/openldap/slapd.d/cn=config.ldif && \
       ! -f %{_sysconfdir}/openldap/slapd.conf
@@ -589,7 +598,9 @@ exit 0
 %config(noreplace) %{_sysconfdir}/openldap/schema
 %config(noreplace) %{_sysconfdir}/openldap/check_password.conf
 %{_tmpfilesdir}/slapd.conf
-%dir %attr(0700,ldap,ldap) %{_sharedstatedir}/ldap
+# Old name prior to 2.6.12-1, after 6.0, 2026-02-17
+%ghost %{_sharedstatedir}/ldap
+%dir %attr(0700,ldap,ldap) /srv/ldap
 %dir %attr(-,ldap,ldap) %{_localstatedir}/run/openldap
 %{_unitdir}/slapd.service
 %{_datadir}/openldap-servers/

@@ -7,6 +7,14 @@ Documentation=man:slapd-mdb
 Documentation=file:///usr/share/doc/openldap-servers/guide.html
 
 [Service]
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ReadWritePaths=/srv/ldap
+ReadWritePaths=/run/openldap
 Type=forking
 ExecStartPre=/usr/libexec/openldap/check-config.sh
 ExecStart=/usr/sbin/slapd -u ldap -h "ldap:/// ldaps:/// ldapi:///"

@@ -158,6 +158,6 @@ objectClass: olcMdbConfig
 olcDatabase: mdb
 olcSuffix: dc=my-domain,dc=com
 olcRootDN: cn=Manager,dc=my-domain,dc=com
-olcDbDirectory:	/var/lib/ldap
+olcDbDirectory:	/srv/ldap
 olcDbIndex: objectClass eq,pres
 olcDbIndex: ou,cn,mail,surname,givenname eq,pres,sub
