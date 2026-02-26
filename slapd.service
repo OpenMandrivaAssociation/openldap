@@ -13,8 +13,8 @@ PrivateTmp=yes
 ProtectControlGroups=yes
 ProtectKernelModules=yes
 ProtectKernelTunables=yes
-ReadWritePaths=/srv/ldap
-ReadWritePaths=/run/openldap
+# We need to write to /etc/openldap/slapd.d when changing the schema
+ReadWritePaths=/srv/ldap /etc/openldap/slapd.d /run/openldap
 Type=forking
 ExecStartPre=/usr/libexec/openldap/check-config.sh
 ExecStart=/usr/sbin/slapd -u ldap -h "ldap:/// ldaps:/// ldapi:///"

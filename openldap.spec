@@ -42,7 +42,7 @@
 
 Name: openldap
 Version: 2.6.12
-Release: 2
+Release: 3
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
