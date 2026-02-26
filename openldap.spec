@@ -42,7 +42,7 @@
 
 Name: openldap
 Version: 2.6.12
-Release: 1
+Release: 2
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -55,6 +55,11 @@ Source4: ldap.conf
 Source10: https://github.com/ltb-project/openldap-ppolicy-check-password/archive/v%{check_password_version}/openldap-ppolicy-check-password-%{check_password_version}.tar.gz
 Source50: libexec-functions
 Source52: libexec-check-config.sh
+
+# Extra schemas -- RFC2307bis is the successor to NIS
+Source100: https://github.com/jtyr/rfc2307bis/raw/refs/heads/master/rfc2307bis.schema
+# Same thing converted to LDIF format
+Source101: https://github.com/palw3ey/rfc2307bis/raw/refs/heads/main/rfc2307bis.ldif
 
 # Patches for 2.6
 Patch0: openldap-manpages.patch
@@ -195,7 +200,6 @@ BuildRequires: systemd
 BuildRequires: cracklib-devel
 # migrationtools (slapadd functionality):
 Provides: ldif2ldbm
-%{?systemd_requires}
 
 %description servers
 OpenLDAP is an open-source suite of LDAP (Lightweight Directory Access
@@ -515,6 +519,10 @@ g ldap 55 - -
 u ldap 55:55 "OpenLDAP server" /srv/ldap /sbin/nologin
 EOF
 
+# Extra schemas
+install -c -m 644 %{S:100} %{buildroot}%{_sysconfdir}/openldap/schema/
+install -c -m 644 %{S:101} %{buildroot}%{_sysconfdir}/openldap/schema/
+
 # Move from /var/lib/ldap to /srv/ldap
 # Old name prior to 2.6.12-1, after 6.0, 2026-02-17
 %pretrans servers -p <lua>
@@ -538,8 +546,6 @@ olcDbDirectory: /srv/ldap"
 fi
 # End /var/lib/ldap to /srv/ldap move
 
-%systemd_post slapd.service
-
 # generate configuration if necessary
 if [[ ! -f %{_sysconfdir}/openldap/slapd.d/cn=config.ldif && \
       ! -f %{_sysconfdir}/openldap/slapd.conf
@@ -557,12 +563,6 @@ if [ $1 -ge 1 ]; then
 fi
 
 exit 0
-
-%preun servers
-%systemd_preun slapd.service
-
-%postun servers
-%systemd_postun_with_restart slapd.service
 
 %files
 %doc ANNOUNCEMENT
