@@ -42,7 +42,7 @@
 
 Name: openldap
 Version: 2.6.12
-Release: 3
+Release: 4
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -267,8 +267,11 @@ done
 %build
 
 %set_build_flags
-# enable experimental support for LDAP over UDP (LDAP_CONNECTIONLESS)
-export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -DLDAP_CONNECTIONLESS"
+# -DLDAP_CONNECTIONLESS: enable experimental support for LDAP over
+# UDP (LDAP_CONNECTIONLESS)
+# -Wl,--export-dynamic: Make sure symbols like
+# slap_anlist_no_attrs (from slapd) are visible to plugins like memberof
+export CFLAGS="${CFLAGS} ${LDFLAGS} -Wl,--as-needed -Wl,--export-dynamic -DLDAP_CONNECTIONLESS"
 
 # FIXME in the cross_compiling case, we assume we're crosscompiling
 # to something with a yielding select -- this assumption may not
