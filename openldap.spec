@@ -41,8 +41,8 @@
 %endif
 
 Name: openldap
-Version: 2.6.12
-Release: 4
+Version: 2.6.13
+Release: 1
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
