@@ -1,0 +1,16 @@
+diff -up openldap-2.6.13/libraries/libldap/tls_o.c.11~ openldap-2.6.13/libraries/libldap/tls_o.c
+--- openldap-2.6.13/libraries/libldap/tls_o.c.11~	2026-05-21 22:35:35.338417570 +0200
++++ openldap-2.6.13/libraries/libldap/tls_o.c	2026-05-21 22:35:35.345519451 +0200
+@@ -861,10 +861,10 @@ tlso_session_chkhost( LDAP *ld, tls_sess
+ 	if (chkSAN) {
+ 	i = X509_get_ext_by_NID(x, NID_subject_alt_name, -1);
+ 	if (i >= 0) {
+-		const X509_EXTENSION *ex;
++		X509_EXTENSION *ex;
+ 		STACK_OF(GENERAL_NAME) *alt;
+ 
+-		ex = X509_get_ext(x, i);
++		ex = (X509_EXTENSION *)X509_get_ext(x, i);
+ 		alt = X509V3_EXT_d2i(ex);
+ 		if (alt) {
+ 			int n, len2 = 0;

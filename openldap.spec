@@ -42,7 +42,7 @@
 
 Name: openldap
 Version: 2.6.13
-Release: 1
+Release: 2
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -73,6 +73,11 @@ Patch5: openldap-allop-overlay.patch
 Patch7: openldap-openssl-manpage-defaultCA.patch
 Patch8: openldap-add-export-symbols-LDAP_CONNECTIONLESS.patch
 Patch9: https://git.openldap.org/openldap/openldap/-/merge_requests/303.patch
+
+# Support OpenSSL 4.0
+Patch20: https://github.com/openldap/openldap/commit/a599597cb3cb6d36f888bffcbd0b010a644b92c5.patch
+Patch21: https://github.com/openldap/openldap/commit/75b624f47574dffb1f5041625cf9d6218dbcb07d.patch
+Patch22: https://github.com/openldap/openldap/commit/a704373426e37fd7f4e4beb3be451b5555799517.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
