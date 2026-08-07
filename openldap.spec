@@ -64,7 +64,7 @@ Patch5: openldap-allop-overlay.patch
 
 # System-wide default for CA certs
 Patch7: openldap-openssl-manpage-defaultCA.patch
-Patch9: 303.patch
+Patch9: https://git.openldap.org/openldap/openldap/-/merge_requests/303.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
