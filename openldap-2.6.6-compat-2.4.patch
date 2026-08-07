@@ -1,7 +1,7 @@
-diff -up openldap-2.6.6/libraries/liblber/lber.map.omv~ openldap-2.6.6/libraries/liblber/lber.map
---- openldap-2.6.6/libraries/liblber/lber.map.omv~	2023-08-08 01:21:56.336189800 +0200
-+++ openldap-2.6.6/libraries/liblber/lber.map	2023-08-08 01:22:06.566290822 +0200
-@@ -142,3 +142,146 @@ OPENLDAP_2.200
+diff -up openldap-2.7.0/libraries/liblber/lber.map.in.omv~ openldap-2.7.0/libraries/liblber/lber.map.in
+--- openldap-2.7.0/libraries/liblber/lber.map.in.omv~	2026-08-07 14:00:10.299393004 +0200
++++ openldap-2.7.0/libraries/liblber/lber.map.in	2026-08-07 14:00:10.372963761 +0200
+@@ -149,3 +149,146 @@ OPENLDAP_2.200
      *;
  };
  
@@ -148,13 +148,14 @@ diff -up openldap-2.6.6/libraries/liblber/lber.map.omv~ openldap-2.6.6/libraries
 +  local:
 +    *;
 +};
-diff -up openldap-2.6.6/libraries/libldap/ldap.map.omv~ openldap-2.6.6/libraries/libldap/ldap.map
---- openldap-2.6.6/libraries/libldap/ldap.map.omv~	2023-08-08 01:21:37.037999173 +0200
-+++ openldap-2.6.6/libraries/libldap/ldap.map	2023-08-08 01:21:47.042098003 +0200
-@@ -574,3 +574,578 @@ OPENLDAP_2.200
-     *;
- };
- 
+diff -up openldap-2.7.0/libraries/libldap/ldap.map.in.omv~ openldap-2.7.0/libraries/libldap/ldap.map.in
+--- openldap-2.7.0/libraries/libldap/ldap.map.in.omv~	2026-08-07 14:00:10.301124567 +0200
++++ openldap-2.7.0/libraries/libldap/ldap.map.in	2026-08-07 14:00:10.373034191 +0200
+@@ -610,3 +610,579 @@ OPENLDAP_2.201
+   global:
+     ldap_domain2hostlist_proto;
+ } OPENLDAP_2.200;
++
 +OPENLDAP_2.4_2
 +{
 +  global:

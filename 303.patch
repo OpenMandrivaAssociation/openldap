@@ -1,7 +1,7 @@
-diff -up openldap-2.6.10/build/rules.mk.9~ openldap-2.6.10/build/rules.mk
---- openldap-2.6.10/build/rules.mk.9~	2025-05-22 18:56:21.000000000 +0100
-+++ openldap-2.6.10/build/rules.mk	2026-01-11 22:18:44.000247494 +0000
-@@ -16,19 +16,34 @@
+diff -Naur a/build/rules.mk b/build/rules.mk
+--- a/build/rules.mk	2026-08-06 19:17:48.000000000 +0200
++++ b/build/rules.mk	2026-08-07 14:02:31.232521800 +0200
+@@ -16,19 +16,35 @@
  # Makefile Template for Programs
  #
  
@@ -19,6 +19,7 @@ diff -up openldap-2.6.10/build/rules.mk.9~ openldap-2.6.10/build/rules.mk
 +
 +all-local-bin:
 +all-yes: $(PROGRAMS) all-local-bin FORCE
++
  
  clean-common: 	FORCE
  	$(RM) $(PROGRAMS) $(XPROGRAMS) $(XSRCS) *.o *.lo a.out core *.core \
@@ -40,10 +41,10 @@ diff -up openldap-2.6.10/build/rules.mk.9~ openldap-2.6.10/build/rules.mk
  	$(5LINT) $(DEFS) $(DEFINES) $(SRCS)
  
  Makefile: $(top_srcdir)/build/rules.mk
-diff -up openldap-2.6.10/clients/tools/Makefile.in.9~ openldap-2.6.10/clients/tools/Makefile.in
---- openldap-2.6.10/clients/tools/Makefile.in.9~	2025-05-22 18:56:21.000000000 +0100
-+++ openldap-2.6.10/clients/tools/Makefile.in	2026-01-11 22:18:44.000247494 +0000
-@@ -23,10 +23,14 @@ OBJS	= ldapsearch.o ldapmodify.o ldapdel
+diff -Naur a/clients/tools/Makefile.in b/clients/tools/Makefile.in
+--- a/clients/tools/Makefile.in	2026-08-06 19:17:48.000000000 +0200
++++ b/clients/tools/Makefile.in	2026-08-07 14:02:31.232649892 +0200
+@@ -23,10 +23,14 @@
  LDAP_INCDIR= ../../include       
  LDAP_LIBDIR= ../../libraries
  
@@ -58,7 +59,7 @@ diff -up openldap-2.6.10/clients/tools/Makefile.in.9~ openldap-2.6.10/clients/to
  
  XSRCS	= ldsversion.c ldmversion.c lddversion.c ldrversion.c ldpversion.c \
  	ldwversion.c ldvversion.c ldcversion.c ldeversion.c lduversion.c
-@@ -34,36 +38,37 @@ XSRCS	= ldsversion.c ldmversion.c lddver
+@@ -34,36 +38,37 @@
  PROGRAMS = ldapsearch ldapmodify ldapdelete ldapmodrdn \
  	ldappasswd ldapwhoami ldapvc ldapcompare ldapexop ldapurl
  
@@ -106,7 +107,7 @@ diff -up openldap-2.6.10/clients/tools/Makefile.in.9~ openldap-2.6.10/clients/to
  
  ldsversion.c: Makefile
  	@-$(RM) $@
-@@ -126,13 +131,15 @@ lduversion.c: Makefile
+@@ -126,13 +131,15 @@
  lduversion.o: ldapurl.o $(XLIBS)
  
  install-local:	FORCE
@@ -131,10 +132,10 @@ diff -up openldap-2.6.10/clients/tools/Makefile.in.9~ openldap-2.6.10/clients/to
 +		$(LN_S) $(DESTDIR)$(bindir)/ldapmodify$(EXEEXT) $(DESTDIR)$(bindir)/ldapadd$(EXEEXT);	\
 +	fi
  
-diff -up openldap-2.6.10/configure.ac.9~ openldap-2.6.10/configure.ac
---- openldap-2.6.10/configure.ac.9~	2025-05-22 18:56:21.000000000 +0100
-+++ openldap-2.6.10/configure.ac	2026-01-11 22:19:22.860392224 +0000
-@@ -289,6 +289,7 @@ OL_ARG_ENABLE(modules, [AS_HELP_STRING([
+diff -Naur a/configure.ac b/configure.ac
+--- a/configure.ac	2026-08-06 19:17:48.000000000 +0200
++++ b/configure.ac	2026-08-07 14:02:31.232899275 +0200
+@@ -291,6 +291,7 @@
  OL_ARG_ENABLE(rlookups, [AS_HELP_STRING([--enable-rlookups], [enable reverse lookups of client hostnames])], no)dnl
  OL_ARG_ENABLE(slapi, [AS_HELP_STRING([--enable-slapi], [enable SLAPI support (experimental)])], no)dnl
  OL_ARG_ENABLE(slp, [AS_HELP_STRING([--enable-slp], [enable SLPv2 support])], no)dnl
@@ -142,7 +143,7 @@ diff -up openldap-2.6.10/configure.ac.9~ openldap-2.6.10/configure.ac
  OL_ARG_ENABLE(wrappers, [AS_HELP_STRING([--enable-wrappers], [enable tcp wrapper support])], no)dnl
  
  dnl ----------------------------------------------------------------
-@@ -564,6 +565,8 @@ BALANCER_LIBS=
+@@ -539,6 +540,8 @@
  BUILD_SLAPD=no
  BUILD_BALANCER=no
  
@@ -151,7 +152,7 @@ diff -up openldap-2.6.10/configure.ac.9~ openldap-2.6.10/configure.ac
  BUILD_THREAD=no
  
  BUILD_SLAPI=no
-@@ -1794,10 +1797,18 @@ dnl	LIBS="$save_LIBS"
+@@ -1739,10 +1742,18 @@
  fi  
  
  if test $ol_link_threads = no ; then
@@ -170,7 +171,7 @@ diff -up openldap-2.6.10/configure.ac.9~ openldap-2.6.10/configure.ac
  	if test $ol_with_threads = yes ; then
  		AC_MSG_ERROR([no suitable thread support])
  	fi
-@@ -2560,6 +2571,9 @@ if test "$ol_link_modules" != no ; then
+@@ -2435,6 +2446,9 @@
  	BUILD_SLAPD=yes
  	SLAPD_MODULES_LDFLAGS="-dlopen self"
  fi
@@ -178,9 +179,9 @@ diff -up openldap-2.6.10/configure.ac.9~ openldap-2.6.10/configure.ac
 +	BUILD_TOOLS=$ol_enable_tools
 +fi
  
- AC_DEFINE(SLAPD_MOD_STATIC,1,[statically linked module])
- AC_DEFINE(SLAPD_MOD_DYNAMIC,2,[dynamically linked module])
-@@ -3137,6 +3151,7 @@ AC_SUBST(OL_VERSIONED_SYMBOLS)
+ if test "$ol_link_wt" = no ; then
+ 	ol_enable_wt=no
+@@ -2657,6 +2671,7 @@
  AC_SUBST(DO_VERSIONED_SYMBOLS)
  
  AC_SUBST(BUILD_SLAPD)
@@ -188,11 +189,11 @@ diff -up openldap-2.6.10/configure.ac.9~ openldap-2.6.10/configure.ac
  dnl slapi
    AC_SUBST(BUILD_SLAPI)
    AC_SUBST(SLAPD_SLAPI_DEPEND)
-diff -up openldap-2.6.10/libraries/libldap/Makefile.in.9~ openldap-2.6.10/libraries/libldap/Makefile.in
---- openldap-2.6.10/libraries/libldap/Makefile.in.9~	2025-05-22 18:56:21.000000000 +0100
-+++ openldap-2.6.10/libraries/libldap/Makefile.in	2026-01-11 22:20:13.140579485 +0000
-@@ -61,19 +61,19 @@ UNIX_LINK_LIBS = $(LDAP_LIBLBER_LA) $(AC
- @DO_VERSIONED_SYMBOLS@SYMBOL_VERSION_FLAGS=$(OL_VERSIONED_SYMBOLS)$(srcdir)/ldap.map
+diff -Naur a/libraries/libldap/Makefile.in b/libraries/libldap/Makefile.in
+--- a/libraries/libldap/Makefile.in	2026-08-06 19:17:48.000000000 +0200
++++ b/libraries/libldap/Makefile.in	2026-08-07 14:02:31.233007536 +0200
+@@ -66,19 +66,19 @@
+ 	$(CPP) -x c -o $@ $(LT_CPPFLAGS) $(srcdir)/$(SYMBOL_VERSION_SCRIPT).in
  
  apitest:	$(XLIBS) apitest.o
 -	$(LTLINK) -o $@ apitest.o $(LIBS)
@@ -218,10 +219,10 @@ diff -up openldap-2.6.10/libraries/libldap/Makefile.in.9~ openldap-2.6.10/librar
  
  
  CFFILES=ldap.conf
-diff -up openldap-2.6.10/tests/progs/Makefile.in.9~ openldap-2.6.10/tests/progs/Makefile.in
---- openldap-2.6.10/tests/progs/Makefile.in.9~	2025-05-22 18:56:21.000000000 +0100
-+++ openldap-2.6.10/tests/progs/Makefile.in	2026-01-11 22:18:44.000247494 +0000
-@@ -24,6 +24,8 @@ SRCS     = slapd-common.c \
+diff -Naur a/tests/progs/Makefile.in b/tests/progs/Makefile.in
+--- a/tests/progs/Makefile.in	2026-08-06 19:17:48.000000000 +0200
++++ b/tests/progs/Makefile.in	2026-08-07 14:02:31.233074987 +0200
+@@ -24,6 +24,8 @@
  LDAP_INCDIR= ../../include
  LDAP_LIBDIR= ../../libraries
  
@@ -230,7 +231,7 @@ diff -up openldap-2.6.10/tests/progs/Makefile.in.9~ openldap-2.6.10/tests/progs/
  XLIBS    = $(LDAP_LIBLDAP_LA) $(LDAP_LIBLUTIL_A) $(LDAP_LIBLDAP_LA) $(LDAP_LIBLBER_LA)
  XXLIBS	 = $(SECURITY_LIBS) $(LUTIL_LIBS)
  XXXLIBS  = $(LTHREAD_LIBS)
-@@ -33,7 +35,7 @@ OBJS     = slapd-common.o
+@@ -33,7 +35,7 @@
  # build-tools: FORCE
  # $(MAKE) $(MFLAGS) load-tools
  

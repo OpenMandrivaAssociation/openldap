@@ -14,7 +14,7 @@
 %global so_ver_compat 2
 
 # When you change "Version: " to the new major version, remember to change this value too
-%global major_version 2.6
+%global major_version 2.7
 
 # Disable automatic .la file removal
 %global __brp_remove_la_files %nil
@@ -33,16 +33,9 @@
 %define lib32name %mklib32name ldap
 %define dev32name %mklib32name -d ldap
 
-%bcond_without perl
-
-%if %{with perl} && %{cross_compiling}
-# OpenLDAP seems to have a problem locating perl headers when crosscompiling
-%global optflags %{optflags} -I%{_libdir}/perl5/CORE
-%endif
-
 Name: openldap
-Version: 2.6.13
-Release: 3
+Version: 2.7.0
+Release: 1
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -61,7 +54,7 @@ Source100: https://github.com/jtyr/rfc2307bis/raw/refs/heads/master/rfc2307bis.s
 # Same thing converted to LDIF format
 Source101: https://github.com/palw3ey/rfc2307bis/raw/refs/heads/main/rfc2307bis.ldif
 
-# Patches for 2.6
+# Patches for 2.7
 Patch0: openldap-manpages.patch
 Patch1: openldap-reentrant-gethostby.patch
 
@@ -71,13 +64,7 @@ Patch5: openldap-allop-overlay.patch
 
 # System-wide default for CA certs
 Patch7: openldap-openssl-manpage-defaultCA.patch
-Patch8: openldap-add-export-symbols-LDAP_CONNECTIONLESS.patch
-Patch9: https://git.openldap.org/openldap/openldap/-/merge_requests/303.patch
-
-# Support OpenSSL 4.0
-Patch20: https://github.com/openldap/openldap/commit/a599597cb3cb6d36f888bffcbd0b010a644b92c5.patch
-Patch21: https://github.com/openldap/openldap/commit/75b624f47574dffb1f5041625cf9d6218dbcb07d.patch
-Patch22: https://github.com/openldap/openldap/commit/a704373426e37fd7f4e4beb3be451b5555799517.patch
+Patch9: 303.patch
 
 # check-password module specific patches
 Patch90: check-password-makefile.patch
@@ -103,11 +90,7 @@ BuildRequires: krb5-devel
 BuildRequires: pkgconfig(libevent)
 BuildRequires: make
 BuildRequires: pkgconfig(libcrypto)
-BuildRequires: perl(ExtUtils::Embed)
-BuildRequires: perl-devel
-BuildRequires: perl-generators
 BuildRequires: perl-interpreter
-BuildRequires: unixODBC-devel
 
 Requires: %{libname} = %{EVRD}
 Requires: %{lberlibname} = %{EVRD}
@@ -261,8 +244,6 @@ ln -s ../../../contrib/slapd-modules/allop/allop.c servers/slapd/overlays
 mv contrib/slapd-modules/allop/README contrib/slapd-modules/allop/README.allop
 mv contrib/slapd-modules/allop/slapo-allop.5 doc/man/man5/slapo-allop.5
 
-mv servers/slapd/back-perl/README{,.back_perl}
-
 # fix documentation encoding
 for filename in doc/drafts/draft-ietf-ldapext-acl-model-xx.txt; do
   iconv -f iso-8859-1 -t utf-8 "$filename" > "$filename.utf8"
@@ -294,18 +275,12 @@ LIBTOOL=slibtool-shared \
 	--enable-crypt \
 	--enable-spasswd \
 	--enable-modules \
-%if %{with perl}
-	--enable-perl \
-%else
-	--disable-perl \
-%endif
 	--enable-rlookups \
 	--enable-slapi \
 	--disable-slp \
 	\
 	--enable-backends=mod \
 	--enable-mdb=yes \
-	--disable-sql \
 	--disable-wt \
 	\
 	--enable-overlays=mod \
@@ -357,14 +332,11 @@ cd build32
 	--enable-crypt \
 	--enable-spasswd \
 	--enable-modules \
-	--enable-perl \
 	--enable-rlookups \
 	--disable-wrappers \
 	--enable-slapi \
 	--disable-slp \
 	--enable-backends=mod \
-	--disable-perl \
-	--disable-sql \
 	--disable-wt \
 	\
 	--enable-overlays=mod \
@@ -489,7 +461,7 @@ for lib in $(ls | grep libldap); do
     unset IFS
 done
 
-# Provide only libldap and copy it to libldap_r for both 2.4 and 2.6+ versions, make a versioned lib link
+# Provide only libldap and copy it to libldap_r for both 2.4 and current versions, make a versioned lib link
 # We increase it by 2 because libldap-2.4 has the 'so.2' major version on 2.4.59 (one of the last versions which is EOF)
 %__cc -shared -o "%{buildroot}%{_libdir}/libldap-2.4.so.${so_ver_short_2_4}" -Wl,--no-as-needed \
        -Wl,-soname -Wl,libldap-2.4.so.${so_ver_short_2_4} -L "%{buildroot}%{_libdir}" -lldap
@@ -598,8 +570,6 @@ exit 0
 %doc contrib/slapd-modules/smbk5pwd/README.smbk5pwd
 %doc doc/guide/admin/*.html
 %doc doc/guide/admin/*.png
-%doc servers/slapd/back-perl/SampleLDAP.pm
-%doc servers/slapd/back-perl/README.back_perl
 %doc openldap-ppolicy-check-password-%{check_password_version}/README.check_pwd
 %doc README.schema
 %config(noreplace) %dir %attr(0750,ldap,ldap) %{_sysconfdir}/openldap/slapd.d

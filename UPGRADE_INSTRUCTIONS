@@ -4,20 +4,31 @@ Please, make sure that you have up-to-date back up and read this document carefu
 
 It's still recommended to do the backup even on the minor version upgrade.
 
+OpenLDAP 2.7 ships LMDB 1.0. Existing slapd-mdb databases MUST be exported
+with a 2.6 slapcat before upgrading and reloaded with 2.7 slapadd afterwards.
+Starting slapd 2.7 on an unmodified 2.6 mdb database will not work.
+
+back-perl and back-sql were removed in 2.7 (use back-sock instead of back-perl).
+GnuTLS support is deprecated and scheduled for removal in 2.8.
+
 Please, review the next links before performing any action:
 
-Upgrading from 2.4.x - https://www.openldap.org/doc/admin25/appendix-upgrading.html
+Upgrading from 2.6.x - https://www.openldap.org/doc/admin27/appendix-upgrading.html
 Upgrading from 2.5.x - https://www.openldap.org/doc/admin26/appendix-upgrading.html
-The normal upgrade procedure - https://www.openldap.org/doc/admin26/maintenance.html
+Upgrading from 2.4.x - https://www.openldap.org/doc/admin25/appendix-upgrading.html
+The normal upgrade procedure - https://www.openldap.org/doc/admin27/maintenance.html
 
 Additionally, please, review and perform the following steps that can help you with the upgrade:
 
          1. Back up both data and configuration directories into a safe place;
-         2. Export data to an LDIF file using slapcat;
+         2. Export data to an LDIF file using slapcat (use the 2.6 binaries
+            before installing 2.7 if the database is mdb);
 a. If you have the deprecated DB type and you haven't performed the slapcat command, you need to move your data and configuration to the system with OpenLDAP 2.4 version and run slapcat command there;
          3. Change the server's configuration according to the changes in the above documents;
           a. If you are replacing the BDB/HDB with MDB, make sure to replace the BDB/HDB sections with their MDB counterparts;
-4. Clear out the current data directory;
+          b. If you used back-perl, migrate to back-sock;
+          c. lloadd: migrate "feature" to "enable"/"disable"; proxyauthz is now enabled by default;
+         4. Clear out the current data directory;
          5. Import data to a new database from the LDIF file using slapadd;
          6. Make sure that your data is intact.
 
