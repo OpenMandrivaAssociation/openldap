@@ -55,6 +55,13 @@ function check_db_perms()
 function check_major_upgrade()
 {
 	retcode=0
+	if [ -f /var/lib/openldap-upgrade/state ]; then
+		st=$(tr -d '\n' < /var/lib/openldap-upgrade/state 2>/dev/null)
+		if [ -n "$st" ] && [ "$st" != "reloaded" ]; then
+			error "OpenLDAP MDB upgrade to 2.7 is incomplete (state=%s). See /var/lib/openldap-upgrade/README" "$st"
+			retcode=1
+		fi
+	fi
 	if [ -f "/usr/share/openldap-servers/UPGRADE_INSTRUCTIONS" ]; then
 		error "You have upgraded your openldap-servers package. There are actions that need to be performed. Please, read the /usr/share/openldap-servers/UPGRADE_INSTRUCTIONS file"
 		retcode=1

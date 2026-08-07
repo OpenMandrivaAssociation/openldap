@@ -8,6 +8,14 @@ OpenLDAP 2.7 ships LMDB 1.0. Existing slapd-mdb databases MUST be exported
 with a 2.6 slapcat before upgrading and reloaded with 2.7 slapadd afterwards.
 Starting slapd 2.7 on an unmodified 2.6 mdb database will not work.
 
+The openldap-servers package tries to do this automatically on upgrade:
+  %pretrans dumps each MDB database with the still-installed < 2.7 slapcat
+  %post slapadds the dumps with 2.7 and keeps the old data.mdb/lock.mdb in
+  <olcDbDirectory>/pre-2.7-backup/ (plus LDIF under /var/lib/openldap-upgrade).
+If the automatic reload fails, slapd is not started; see
+/var/lib/openldap-upgrade/README. After a successful upgrade you may remove
+the backups once you have verified the directory.
+
 back-perl and back-sql were removed in 2.7 (use back-sock instead of back-perl).
 GnuTLS support is deprecated and scheduled for removal in 2.8.
 

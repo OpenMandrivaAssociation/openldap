@@ -35,7 +35,7 @@
 
 Name: openldap
 Version: 2.7.0
-Release: 1
+Release: 2
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -505,11 +505,364 @@ install -c -m 644 %{S:101} %{buildroot}%{_sysconfdir}/openldap/schema/
 
 # Move from /var/lib/ldap to /srv/ldap
 # Old name prior to 2.6.12-1, after 6.0, 2026-02-17
+# Also dump MDB databases with the old slapcat before unpacking 2.7 (LMDB 1.0).
 %pretrans servers -p <lua>
 omv = require("omv")
 omv.dir2Symlink("/var/lib/ldap", "/srv/ldap")
 
+-- Automatic LMDB 0.9 -> 1.0 dump for upgrades from OpenLDAP < 2.7.
+-- Must run in %%pretrans so the still-installed < 2.7 slapcat is used.
+local UPGRADE_DIR = "/var/lib/openldap-upgrade"
+local STATE = UPGRADE_DIR .. "/state"
+local MANIFEST = UPGRADE_DIR .. "/manifest"
+local LOG = UPGRADE_DIR .. "/upgrade.log"
+
+local function exists(p)
+	return posix.stat(p) ~= nil
+end
+
+local function log(msg)
+	print("openldap: " .. msg)
+	omv.mkdir_p(UPGRADE_DIR)
+	local f = io.open(LOG, "a")
+	if f then
+		f:write(os.date("%%Y-%%m-%%d %%H:%%M:%%S ") .. msg .. "\n")
+		f:close()
+	end
+end
+
+local function find_cmd(cands)
+	for _, n in ipairs(cands) do
+		if posix.access(n, "x") then
+			return n
+		end
+	end
+	return nil
+end
+
+local function readfile(p)
+	local f = io.open(p, "r")
+	if not f then return "" end
+	local t = f:read("*a")
+	f:close()
+	return t
+end
+
+local function writefile(p, data)
+	local f = io.open(p, "w")
+	if not f then return false end
+	f:write(data)
+	f:close()
+	return true
+end
+
+local function trim(s)
+	if not s then return s end
+	return (s:gsub("^%%s+", ""):gsub("%%s+$", ""))
+end
+
+local function unfold_ldif(text)
+	return (text:gsub("\n ", ""))
+end
+
+local function parse_mdb_from_ldif(text)
+	text = unfold_ldif(text)
+	local dbs, cur = {}, {}
+	local function flush()
+		if cur.dir and cur.suffix then
+			cur.dir = trim(cur.dir)
+			cur.suffix = trim(cur.suffix)
+			if exists(cur.dir .. "/data.mdb") then
+				table.insert(dbs, {suffix = cur.suffix, dir = cur.dir})
+			end
+		end
+		cur = {}
+	end
+	for line in text:gmatch("[^\n]+") do
+		if line:match("^dn:") then
+			flush()
+		elseif line:match("^olcSuffix:: ") then
+			cur.suffix = rpm.b64decode(line:match("^olcSuffix::%%s*(%%S+)"))
+		elseif line:match("^olcSuffix: ") then
+			cur.suffix = line:match("^olcSuffix:%%s*(.+)$")
+		elseif line:match("^olcDbDirectory:: ") then
+			cur.dir = rpm.b64decode(line:match("^olcDbDirectory::%%s*(%%S+)"))
+		elseif line:match("^olcDbDirectory: ") then
+			cur.dir = line:match("^olcDbDirectory:%%s*(.+)$")
+		end
+	end
+	flush()
+	return dbs
+end
+
+local function parse_mdb_from_slapd_conf(path)
+	local f = io.open(path, "r")
+	if not f then return {} end
+	local dbs = {}
+	local suf, dir, ismdb
+	local function flush()
+		if ismdb and dir and suf and exists(dir .. "/data.mdb") then
+			table.insert(dbs, {suffix = trim(suf), dir = trim(dir)})
+		end
+		suf, dir, ismdb = nil, nil, nil
+	end
+	for line in f:lines() do
+		local db = line:match("^%%s*[Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee]%%s+(%%S+)")
+		if db then
+			flush()
+			db = db:lower():gsub('"', "")
+			ismdb = (db == "mdb" or db == "hdb" or db == "bdb")
+		else
+			local s = line:match("^%%s*[Ss][Uu][Ff][Ff][Ii][Xx]%%s+(.+)$")
+			if s then suf = s:gsub('"', "") end
+			local d = line:match("^%%s*[Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy]%%s+(%%S+)")
+			if d then dir = d:gsub('"', "") end
+		end
+	end
+	flush()
+	f:close()
+	return dbs
+end
+
+-- arg[2] is $1: 1 on initial install, >=2 on upgrade
+local ninst = tonumber(arg[2]) or 0
+if ninst < 2 then
+	return
+end
+
+if exists(STATE) then
+	local st = trim(readfile(STATE))
+	if st == "dumped" or st == "reloaded" then
+		return
+	end
+end
+
+local slapd = find_cmd({"/usr/sbin/slapd", "/usr/bin/slapd"})
+if not slapd then
+	return
+end
+
+omv.mkdir_p(UPGRADE_DIR)
+posix.chmod(UPGRADE_DIR, "0700")
+
+local tmp_ver = UPGRADE_DIR .. "/.slapd-vv"
+rpm.spawn({slapd, "-VV"}, {stdout = tmp_ver, stderr = tmp_ver})
+local vout = readfile(tmp_ver)
+posix.unlink(tmp_ver)
+local ver = vout:match("slapd%%s+([0-9]+%%.[0-9]+%%.[0-9]+)") or vout:match("slapd%%s+([0-9]+%%.[0-9]+)")
+if not ver then
+	local tmp_q = UPGRADE_DIR .. "/.rpmq"
+	rpm.spawn({"/usr/bin/rpm", "-q", "--qf", "%%{VERSION}", "openldap-servers"},
+		{stdout = tmp_q, stderr = "/dev/null"})
+	ver = trim(readfile(tmp_q))
+	posix.unlink(tmp_q)
+	if ver and ver:match("not installed") then
+		ver = nil
+	end
+end
+if not ver or rpm.vercmp(ver, "2.7.0") >= 0 then
+	return
+end
+
+local slapcat = find_cmd({"/usr/sbin/slapcat", "/usr/bin/slapcat"})
+if not slapcat then
+	log("OpenLDAP " .. ver .. " is installed but slapcat is missing; cannot dump MDB for 2.7")
+	error("openldap: slapcat not found; cannot dump MDB databases for the 2.7 LMDB 1.0 upgrade")
+end
+
+local cfg_args
+if exists("/etc/openldap/slapd.d/cn=config.ldif") then
+	cfg_args = {"-F", "/etc/openldap/slapd.d"}
+elseif exists("/etc/openldap/slapd.conf") then
+	cfg_args = {"-f", "/etc/openldap/slapd.conf"}
+else
+	if exists("/srv/ldap/data.mdb") or exists("/var/lib/ldap/data.mdb") then
+		error("openldap: MDB data exists but no slapd configuration was found; dump with 2.6 slapcat before upgrading")
+	end
+	return
+end
+
+local systemctl = find_cmd({"/usr/bin/systemctl", "/bin/systemctl"})
+if systemctl then
+	rpm.spawn({systemctl, "stop", "slapd.service"}, {stdout = "/dev/null", stderr = "/dev/null"})
+end
+
+local dbs = {}
+if cfg_args[1] == "-F" then
+	local cfg_ldif = UPGRADE_DIR .. "/cn-config.ldif"
+	local cmd = {slapcat}
+	for _, a in ipairs(cfg_args) do table.insert(cmd, a) end
+	table.insert(cmd, "-b")
+	table.insert(cmd, "cn=config")
+	table.insert(cmd, "-l")
+	table.insert(cmd, cfg_ldif)
+	rpm.spawn(cmd, {stderr = UPGRADE_DIR .. "/slapcat-config.err"})
+	if exists(cfg_ldif) then
+		dbs = parse_mdb_from_ldif(readfile(cfg_ldif))
+	end
+	if #dbs == 0 then
+		local confdir = "/etc/openldap/slapd.d/cn=config"
+		local acc = ""
+		if exists(confdir) then
+			for _, name in ipairs(posix.dir(confdir)) do
+				if name:match("^olcDatabase=") and name:match("%%.ldif$") then
+					acc = acc .. readfile(confdir .. "/" .. name) .. "\n"
+				end
+			end
+		end
+		if acc ~= "" then
+			dbs = parse_mdb_from_ldif(acc)
+		end
+	end
+else
+	dbs = parse_mdb_from_slapd_conf("/etc/openldap/slapd.conf")
+end
+
+if #dbs == 0 then
+	local fallback = nil
+	if exists("/srv/ldap/data.mdb") then
+		fallback = "/srv/ldap"
+	elseif exists("/var/lib/ldap/data.mdb") then
+		fallback = "/var/lib/ldap"
+	end
+	if fallback then
+		dbs = {{dir = fallback, dbnum = 1}}
+	else
+		log("OpenLDAP " .. ver .. ": no MDB databases to convert")
+		return
+	end
+end
+
+log("dumping " .. #dbs .. " MDB database(s) from OpenLDAP " .. ver .. " for LMDB 1.0 reload")
+
+local mf = io.open(MANIFEST, "w")
+if not mf then
+	error("openldap: cannot write " .. MANIFEST)
+end
+
+for i, db in ipairs(dbs) do
+	local ldif = UPGRADE_DIR .. "/db-" .. i .. ".ldif"
+	local cmd = {slapcat}
+	for _, a in ipairs(cfg_args) do table.insert(cmd, a) end
+	local seltype, selector
+	if db.suffix then
+		seltype, selector = "b", db.suffix
+		table.insert(cmd, "-b")
+		table.insert(cmd, db.suffix)
+	else
+		seltype, selector = "n", tostring(db.dbnum or 1)
+		table.insert(cmd, "-n")
+		table.insert(cmd, selector)
+	end
+	table.insert(cmd, "-l")
+	table.insert(cmd, ldif)
+	local errf = UPGRADE_DIR .. "/slapcat-" .. i .. ".err"
+	local rc = rpm.spawn(cmd, {stderr = errf})
+	if rc ~= 0 or not exists(ldif) then
+		mf:close()
+		local detail = trim(readfile(errf))
+		log("slapcat failed for " .. selector .. ": " .. detail)
+		error("openldap: slapcat failed for '" .. selector ..
+			"'. Staying on OpenLDAP " .. ver ..
+			" so you can dump the MDB database manually. See " .. UPGRADE_DIR)
+	end
+	mf:write(seltype .. "\t" .. selector .. "\t" .. db.dir .. "\t" .. ldif .. "\n")
+	log("dumped " .. selector .. " (" .. db.dir .. ") -> " .. ldif)
+end
+mf:close()
+
+writefile(STATE, "dumped\n")
+writefile(UPGRADE_DIR .. "/README", [[
+OpenLDAP automatic MDB reload (LMDB 0.9 -> 1.0)
+================================================
+
+OpenLDAP 2.7 uses LMDB 1.0, which cannot open 2.6 (LMDB 0.9) data.mdb files.
+This directory holds slapcat dumps taken with the old slapd before the upgrade.
+
+After a successful upgrade:
+  - reloaded databases live in their original olcDbDirectory
+  - the original MDB files are saved as <directory>/pre-2.7-backup/
+  - LDIF dumps remain here
+
+Once you have confirmed slapd is healthy you may remove:
+  rm -rf /var/lib/openldap-upgrade
+  rm -rf <directory>/pre-2.7-backup
+
+If reload failed, slapd is intentionally not started. Fix the error in
+upgrade.log / slapcat-*.err, then either:
+  - reinstall/upgrade openldap-servers to retry slapadd, or
+  - slapadd the db-*.ldif files by hand with OpenLDAP 2.7
+]])
+log("MDB dump complete; slapadd will run from %%post")
+
 %post servers
+# Reload MDB dumps taken in %%pretrans (LMDB 0.9 -> 1.0)
+UPGRADE_DIR=/var/lib/openldap-upgrade
+STATE=$UPGRADE_DIR/state
+MANIFEST=$UPGRADE_DIR/manifest
+if [ -f "$STATE" ]; then
+	st=$(tr -d '\n' < "$STATE" 2>/dev/null)
+	if [ "$st" = "dumped" ] || [ "$st" = "failed" ]; then
+		echo "openldap: reloading MDB databases into LMDB 1.0 format"
+		%{systemctl_bin} stop slapd.service &>/dev/null || :
+		SLAPADD=%{_sbindir}/slapadd
+		[ -x "$SLAPADD" ] || SLAPADD=/usr/bin/slapadd
+		if [ -f %{_sysconfdir}/openldap/slapd.d/cn=config.ldif ]; then
+			SLAPADD_CFG="-F %{_sysconfdir}/openldap/slapd.d"
+		elif [ -f %{_sysconfdir}/openldap/slapd.conf ]; then
+			SLAPADD_CFG="-f %{_sysconfdir}/openldap/slapd.conf"
+		else
+			SLAPADD_CFG=""
+		fi
+		failed=0
+		if [ ! -f "$MANIFEST" ]; then
+			echo "openldap: $MANIFEST missing; cannot reload MDB dumps"
+			echo failed > "$STATE"
+			exit 1
+		fi
+		while IFS="$(printf '\t')" read -r seltype selector dir ldif; do
+			[ -n "$seltype" ] || continue
+			if [ ! -f "$ldif" ]; then
+				echo "openldap: missing dump $ldif"
+				failed=1
+				continue
+			fi
+			mkdir -p "$dir/pre-2.7-backup"
+			for f in "$dir"/data.mdb "$dir"/lock.mdb "$dir"/alock; do
+				if [ -e "$f" ]; then
+					mv -f "$f" "$dir/pre-2.7-backup/"
+				fi
+			done
+			for f in "$dir"/*.mdb; do
+				[ -e "$f" ] || continue
+				mv -f "$f" "$dir/pre-2.7-backup/"
+			done
+			if [ "$seltype" = "b" ]; then
+				addrc=0
+				"$SLAPADD" $SLAPADD_CFG -b "$selector" -l "$ldif" -q -w >>"$UPGRADE_DIR/upgrade.log" 2>&1 || addrc=$?
+			else
+				addrc=0
+				"$SLAPADD" $SLAPADD_CFG -n "$selector" -l "$ldif" -q -w >>"$UPGRADE_DIR/upgrade.log" 2>&1 || addrc=$?
+			fi
+			if [ "$addrc" -ne 0 ]; then
+				echo "openldap: slapadd failed for $selector (exit $addrc); restoring pre-2.7 MDB backup"
+				mv -f "$dir/pre-2.7-backup/"* "$dir/" 2>/dev/null || :
+				failed=1
+				continue
+			fi
+			chown -R ldap:ldap "$dir" 2>/dev/null || :
+			echo "openldap: reloaded $selector (backup in $dir/pre-2.7-backup)"
+		done < "$MANIFEST"
+		if [ "$failed" -ne 0 ]; then
+			echo failed > "$STATE"
+			echo "openldap: MDB reload failed. slapd will not start. See $UPGRADE_DIR/README and $UPGRADE_DIR/upgrade.log"
+			exit 1
+		fi
+		echo reloaded > "$STATE"
+		echo "openldap: MDB reload complete. Original MDB files kept under <dbdir>/pre-2.7-backup; dumps in $UPGRADE_DIR"
+	fi
+fi
+
 TARGET_DN=$(slapcat -b cn=config 2>/dev/null | \
 	awk '/^dn: / {dn=$2} /^olcDbDirectory:[[:space:]]*\/var\/lib\/ldap/ {print dn}')
 if [[ -n "$TARGET_DN" ]]; then
