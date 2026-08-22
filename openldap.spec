@@ -507,6 +507,14 @@ install -c -m 644 %{S:101} %{buildroot}%{_sysconfdir}/openldap/schema/
 # Old name prior to 2.6.12-1, after 6.0, 2026-02-17
 # Also dump MDB databases with the old slapcat before unpacking 2.7 (LMDB 1.0).
 %pretrans servers -p <lua>
+-- arg[2] is $1: 1 on initial install, >=2 on upgrade.
+-- Fresh install: nothing to migrate or dump, and omv.lua is not
+-- in an empty --root yet (%pretrans runs before any files unpack).
+local ninst = tonumber(arg[2]) or 0
+if ninst < 2 then
+	return
+end
+
 omv = require("omv")
 omv.dir2Symlink("/var/lib/ldap", "/srv/ldap")
 
@@ -622,12 +630,6 @@ local function parse_mdb_from_slapd_conf(path)
 	flush()
 	f:close()
 	return dbs
-end
-
--- arg[2] is $1: 1 on initial install, >=2 on upgrade
-local ninst = tonumber(arg[2]) or 0
-if ninst < 2 then
-	return
 end
 
 if exists(STATE) then
