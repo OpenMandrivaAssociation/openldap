@@ -97,6 +97,7 @@ Requires: %{lberlibname} = %{EVRD}
 Requires: %{slapilibname} = %{EVRD}
 
 %if %{with compat32}
+BuildRequires: libc6
 BuildRequires: devel(libkrb5)
 BuildRequires: devel(libncurses)
 BuildRequires: devel(libssl)
