@@ -35,7 +35,7 @@
 
 Name: openldap
 Version: 2.7.1
-Release: 1
+Release: 2
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -100,6 +100,7 @@ Requires: %{slapilibname} = %{EVRD}
 BuildRequires: libc6
 BuildRequires: cross-i686-openmandriva-linux-gnu-libc
 BuildRequires: cross-i686-openmandriva-linux-gnu-clang
+BuildRequires: cross-i686-openmandriva-linux-gnu-gcc
 BuildRequires: devel(libkrb5)
 BuildRequires: devel(libncurses)
 BuildRequires: devel(libssl)
