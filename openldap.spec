@@ -98,6 +98,8 @@ Requires: %{slapilibname} = %{EVRD}
 
 %if %{with compat32}
 BuildRequires: libc6
+BuildRequires: cross-i686-openmandriva-linux-gnu-libc
+BuildRequires: cross-i686-openmandriva-linux-gnu-clang
 BuildRequires: devel(libkrb5)
 BuildRequires: devel(libncurses)
 BuildRequires: devel(libssl)
