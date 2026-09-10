@@ -35,7 +35,7 @@
 
 Name: openldap
 Version: 2.7.1
-Release: 2
+Release: 3
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -317,6 +317,7 @@ popd #" <-- workaround for a vim syntax highlighting bug, ignore
 CONFIGURE_TOP="$(pwd)"
 mkdir build32
 cd build32
+export LIBRARY_PATH="/usr/i686-openmandriva-linux-gnu/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
 %configure32 \
 	--with-subdir=%{name} \
 	--localstatedir=/var/run/ldap \
