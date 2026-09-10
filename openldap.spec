@@ -35,7 +35,7 @@
 
 Name: openldap
 Version: 2.7.1
-Release: 3
+Release: 4
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
@@ -98,9 +98,12 @@ Requires: %{slapilibname} = %{EVRD}
 
 %if %{with compat32}
 BuildRequires: libc6
-BuildRequires: cross-i686-openmandriva-linux-gnu-libc
+BuildRequires: atomic-devel
 BuildRequires: cross-i686-openmandriva-linux-gnu-clang
+BuildRequires: cross-i686-openmandriva-linux-gnu-binutils
 BuildRequires: cross-i686-openmandriva-linux-gnu-gcc
+BuildRequires: cross-i686-openmandriva-linux-gnu-libc
+BuildRequires: cross-i686-openmandriva-linux-gnu-kernel-headers
 BuildRequires: devel(libkrb5)
 BuildRequires: devel(libncurses)
 BuildRequires: devel(libssl)
@@ -317,7 +320,6 @@ popd #" <-- workaround for a vim syntax highlighting bug, ignore
 CONFIGURE_TOP="$(pwd)"
 mkdir build32
 cd build32
-export LIBRARY_PATH="/usr/i686-openmandriva-linux-gnu/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
 %configure32 \
 	--with-subdir=%{name} \
 	--localstatedir=/var/run/ldap \
