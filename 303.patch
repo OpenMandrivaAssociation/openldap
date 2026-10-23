@@ -189,11 +189,10 @@ diff -Naur a/configure.ac b/configure.ac
  dnl slapi
    AC_SUBST(BUILD_SLAPI)
    AC_SUBST(SLAPD_SLAPI_DEPEND)
-diff -Naur a/libraries/libldap/Makefile.in b/libraries/libldap/Makefile.in
---- a/libraries/libldap/Makefile.in	2026-08-06 19:17:48.000000000 +0200
-+++ b/libraries/libldap/Makefile.in	2026-08-07 14:02:31.233007536 +0200
-@@ -66,19 +66,19 @@
- 	$(CPP) -x c -o $@ $(LT_CPPFLAGS) $(srcdir)/$(SYMBOL_VERSION_SCRIPT).in
+--- a/libraries/libldap/Makefile.in
++++ b/libraries/libldap/Makefile.in
+@@ -70,19 +70,19 @@
+ 	$(CPP) -x c -o $@ $(LT_CPPFLAGS) $(srcdir)/$(UNIX_SYMBOL_VERSION_SCRIPT).in
  
  apitest:	$(XLIBS) apitest.o
 -	$(LTLINK) -o $@ apitest.o $(LIBS)
@@ -219,6 +218,7 @@ diff -Naur a/libraries/libldap/Makefile.in b/libraries/libldap/Makefile.in
  
  
  CFFILES=ldap.conf
+
 diff -Naur a/tests/progs/Makefile.in b/tests/progs/Makefile.in
 --- a/tests/progs/Makefile.in	2026-08-06 19:17:48.000000000 +0200
 +++ b/tests/progs/Makefile.in	2026-08-07 14:02:31.233074987 +0200
