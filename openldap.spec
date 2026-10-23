@@ -34,8 +34,8 @@
 %define dev32name %mklib32name -d ldap
 
 Name: openldap
-Version: 2.7.1
-Release: 5
+Version: 2.7.2
+Release: 1
 Summary: LDAP support libraries
 License: OpenLDAP
 URL: https://www.openldap.org/
