@@ -17,7 +17,11 @@ ProtectKernelTunables=yes
 ReadWritePaths=/srv/ldap /etc/openldap/slapd.d /run/openldap
 Type=forking
 ExecStartPre=/usr/libexec/openldap/check-config.sh
-ExecStart=/usr/sbin/slapd -u ldap -h "ldap:/// ldaps:/// ldapi:///"
+# Override in /etc/sysconfig/slapd (e.g. SLAPD_URLS="ldapi:/// ldap://127.0.0.1/")
+# instead of resetting ExecStart= in a drop-in.
+Environment="SLAPD_URLS=ldap:/// ldaps:/// ldapi:///" "SLAPD_OPTIONS="
+EnvironmentFile=-/etc/sysconfig/slapd
+ExecStart=/usr/sbin/slapd -u ldap -h ${SLAPD_URLS} $SLAPD_OPTIONS
 
 [Install]
 WantedBy=multi-user.target
